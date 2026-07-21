@@ -66,3 +66,11 @@ export const obtenerCalificacionesAlumno = async (alumnoId) => {
 
   return response.data;
 };
+
+export const obtenerCalificacionesGrupo = async (grupoId) => {
+  const response = await api.get("/calificaciones/", {
+    params: { grupo_id: grupoId },
+  });
+
+  return response.data;
+};

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronLeft, LogOut, Menu } from "lucide-react";
 import logo from "../assets/UnifrontLogo.png";
 import { sidebarSections } from "../config/sidebarSections";
-import SidebarSection from "./sidebar/sidebarSection";
+import SidebarSection from "./sidebar/SidebarSection";
 
 function Sidebar({ isOpen, onToggle }) {
   const { logout, user } = useAuth();

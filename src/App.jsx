@@ -13,7 +13,6 @@ import AsistenciaPage from "./pages/AsistenciaPage";
 import CapturaCalificacionesPage from "./pages/CapturaCalificacionesPage";
 import UsuariosAltaPage from "./pages/UsuariosAltaPage";
 import UsuariosPage from "./pages/UsuariosPage";
-import ReportesFundamentalesPage from "./pages/ReportesFundamentalesPage";
 import CuadroHonorPage from "./pages/CuadroHonorPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import MainLayout from "./layouts/MainLayout";
@@ -29,6 +28,12 @@ import RezagoCarreras from "./pages/RezagoCarreras";
 import Kardex from "./pages/Kardex";
 import AlumnoPerfilPage from "./pages/AlumnoPerfilPage";
 import CalificacionesAlumnos from "./pages/CalificacionesAlumnos";
+import FormatoEvaluaciones from "./pages/FormatoEvaluaciones";
+import FormatoEvaluacionesExtraordinarias from "./pages/FormatoExtraordinario";
+import FormatoTituloSuficiencia from "./pages/FormatoTituloSuficiencia";
+import CertificadoCalificaciones from "./pages/TodasLasMaterias";
+import SemaforoEgresados from "./pages/SemaforoEgresados";
+import ConcentradoCalificaciones from "./pages/ConcentradoCalificaciones";
 
 function App() {
   return (
@@ -169,17 +174,6 @@ function App() {
         />
 
         <Route
-          path="/reportes-fundamentales"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <ReportesFundamentalesPage />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
           path="/constancia-estudios"
           element={
             <ProtectedRoute>
@@ -290,6 +284,17 @@ function App() {
         />
 
         <Route
+          path="/concentrado-calificaciones"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ConcentradoCalificaciones />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/alumno/perfil"
           element={
             <ProtectedRoute>
@@ -375,6 +380,61 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <CalificacionesAlumnos />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/formato-evaluacion"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <FormatoEvaluaciones />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/formato-extraordinario"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <FormatoEvaluacionesExtraordinarias />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/formato-titulo-sufi"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <FormatoTituloSuficiencia />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/listado-materias"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <CertificadoCalificaciones />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/semaforo-egresados"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <SemaforoEgresados />
               </MainLayout>
             </ProtectedRoute>
           }

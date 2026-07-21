@@ -22,12 +22,6 @@ const descargarBlob = (blob, filename) => {
   window.URL.revokeObjectURL(url);
 };
 
-export const obtenerReportesFundamentales = async () => {
-  const response = await api.get("/reportes/fundamentales");
-
-  return response.data;
-};
-
 export const obtenerReporteReinscripcionAlumnos = async ({
   grupoId,
   periodoId,
@@ -88,29 +82,3 @@ export const descargarConcentradoCalificacionesExcel = async ({
   descargarBlob(response.data, filename);
 };
 
-export const descargarReportesFundamentales = async () => {
-  const response = await api.get("/reportes/fundamentales/excel", {
-    responseType: "blob",
-  });
-  const filename = obtenerNombreArchivo(
-    response,
-    "reportes_fundamentales.xlsx",
-  );
-
-  descargarBlob(response.data, filename);
-};
-
-export const descargarReporteFundamental = async (reporteId) => {
-  const response = await api.get(
-    `/reportes/fundamentales/${reporteId}/excel`,
-    {
-      responseType: "blob",
-    },
-  );
-  const filename = obtenerNombreArchivo(
-    response,
-    `reporte_${reporteId}.xlsx`,
-  );
-
-  descargarBlob(response.data, filename);
-};

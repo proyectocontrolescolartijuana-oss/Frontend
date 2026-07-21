@@ -5,6 +5,8 @@ import {
   CalendarDays,
   ClipboardList,
   CalendarCheck,
+  ClipboardCheck,
+  ClipboardX,
   Award,
   GraduationCap,
   Library,
@@ -13,12 +15,13 @@ import {
   FileStack,
   FileSpreadsheet,
   KeyRound,
+  ListChecks,
+  TrafficCone,
 } from "lucide-react";
 
 export const sidebarSections = [
   {
     title: "General",
-
     items: [
       {
         icon: LayoutDashboard,
@@ -28,10 +31,8 @@ export const sidebarSections = [
       },
     ],
   },
-
   {
-    title: "Académico",
-
+    title: "Academico",
     items: [
       {
         icon: GraduationCap,
@@ -39,14 +40,12 @@ export const sidebarSections = [
         path: "/carreras",
         roles: ["ADMIN"],
       },
-
       {
         icon: Library,
         label: "Materias",
         path: "/materias",
         roles: ["ADMIN"],
       },
-
       {
         icon: BookOpen,
         label: "Planes de estudio",
@@ -55,10 +54,8 @@ export const sidebarSections = [
       },
     ],
   },
-
   {
     title: "Escolar",
-
     items: [
       {
         icon: Users,
@@ -66,21 +63,18 @@ export const sidebarSections = [
         path: "/grupos",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
-
       {
         icon: Users,
         label: "Cargas academicas",
         path: "/alumnos",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
-
       {
         icon: CalendarDays,
         label: "Periodos",
         path: "/periodos",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
-
       {
         icon: Users,
         label: "Promedios",
@@ -99,7 +93,6 @@ export const sidebarSections = [
         path: "/kardex",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
-
       {
         icon: Award,
         label: "Cuadro de honor",
@@ -108,10 +101,8 @@ export const sidebarSections = [
       },
     ],
   },
-
   {
     title: "Docentes",
-
     items: [
       {
         icon: ClipboardList,
@@ -127,10 +118,8 @@ export const sidebarSections = [
       },
     ],
   },
-
   {
-    title: "Administración",
-
+    title: "Administracion",
     items: [
       {
         icon: User,
@@ -138,18 +127,51 @@ export const sidebarSections = [
         path: "/usuarios",
         roles: ["ADMIN"],
       },
+    ],
+  },
+  {
+    title: "Reportes",
+    items: [
       {
         icon: FileSpreadsheet,
-        label: "Reportes",
-        path: "/reportes-fundamentales",
+        label: "Concentrado calificaciones",
+        path: "/concentrado-calificaciones",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+      {
+        icon: ClipboardCheck,
+        label: "Formato de evaluacion",
+        path: "/formato-evaluacion",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+      {
+        icon: ClipboardX,
+        label: "Formato de extraordinario",
+        path: "/formato-extraordinario",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+      {
+        icon: Award,
+        label: "Formato Titulo de Suficiencia",
+        path: "/formato-titulo-sufi",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+      {
+        icon: ListChecks,
+        label: "Listado Materias",
+        path: "/listado-materias",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+      {
+        icon: TrafficCone,
+        label: "Semaforo egresados",
+        path: "/semaforo-egresados",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
     ],
   },
-
   {
     title: "Alumno",
-
     items: [
       {
         icon: KeyRound,
@@ -177,10 +199,8 @@ export const sidebarSections = [
       },
     ],
   },
-
   {
     title: "Documentos",
-
     items: [
       {
         icon: BookOpen,
@@ -190,7 +210,7 @@ export const sidebarSections = [
       },
       {
         icon: BookOpen,
-        label: "Constancias de terminación",
+        label: "Constancias de terminacion",
         path: "/constancia-terminacion",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
@@ -226,7 +246,7 @@ export const sidebarSections = [
       },
       {
         icon: BookOpen,
-        label: "Ficha de inscripción",
+        label: "Ficha de inscripcion",
         path: "/ficha-inscripcion",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
