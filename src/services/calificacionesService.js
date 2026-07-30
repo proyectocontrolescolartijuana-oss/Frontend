@@ -1,4 +1,5 @@
 import api from "./api";
+import { normalizarLogos } from "./urlUtils";
 
 export const obtenerGruposCaptura = async () => {
   const response = await api.get("/calificaciones/captura/grupos");
@@ -34,7 +35,7 @@ export const obtenerBoletaFinal = async ({ alumnoId, periodoId }) => {
     },
   });
 
-  return response.data;
+  return normalizarLogos(response.data);
 };
 
 export const obtenerMiBoletaFinal = async ({ periodoId }) => {
@@ -44,7 +45,7 @@ export const obtenerMiBoletaFinal = async ({ periodoId }) => {
     },
   });
 
-  return response.data;
+  return normalizarLogos(response.data);
 };
 
 export const obtenerCuadroHonor = async ({ cuatrimestre, egresados }) => {

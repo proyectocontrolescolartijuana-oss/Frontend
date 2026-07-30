@@ -72,7 +72,7 @@ export default function CarrerasPage() {
       console.error(error);
       window.alert(
         error.response?.data?.detail ||
-          "No se pudo eliminar la carrera. Revisa si tiene informacion relacionada.",
+          "No se pudo crear la carrera. Revisa los datos e intenta de nuevo.",
       );
     }
   };

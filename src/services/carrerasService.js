@@ -1,14 +1,8 @@
 import api from "./api";
-
-const construirUrlApi = (ruta) => {
-  if (!ruta || !ruta.startsWith("/")) return ruta;
-
-  return new URL(ruta, api.defaults.baseURL).toString();
-};
+import { construirUrlApi, normalizarLogos } from "./urlUtils";
 
 const normalizarCarrera = (carrera) => ({
-  ...carrera,
-  logo: construirUrlApi(carrera.logo),
+  ...normalizarLogos(carrera),
 });
 
 export const obtenerCarreras = async () => {

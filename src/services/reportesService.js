@@ -1,4 +1,5 @@
 import api from "./api";
+import { normalizarLogos } from "./urlUtils";
 
 const obtenerNombreArchivo = (response, fallback) => {
   const disposition = response.headers["content-disposition"];
@@ -36,7 +37,7 @@ export const obtenerReporteReinscripcionAlumnos = async ({
     },
   );
 
-  return response.data;
+  return normalizarLogos(response.data);
 };
 
 export const obtenerConcentradoCalificaciones = async ({

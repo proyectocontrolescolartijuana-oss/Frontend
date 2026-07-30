@@ -1,11 +1,12 @@
 import api from "./api";
+import { normalizarLogos } from "./urlUtils";
 
 export const obtenerKardexPorMatricula = async (matricula) => {
   const response = await api.get("/kardex", {
     params: { matricula },
   });
 
-  return response.data;
+  return normalizarLogos(response.data);
 };
 
 export const obtenerKardexPorBusqueda = async (q) => {
@@ -13,7 +14,7 @@ export const obtenerKardexPorBusqueda = async (q) => {
     params: { q },
   });
 
-  return response.data;
+  return normalizarLogos(response.data);
 };
 
 export const buscarAlumnosKardex = async (q) => {
@@ -21,11 +22,11 @@ export const buscarAlumnosKardex = async (q) => {
     params: { q },
   });
 
-  return response.data;
+  return normalizarLogos(response.data);
 };
 
 export const obtenerMiKardex = async () => {
   const response = await api.get("/kardex/me");
 
-  return response.data;
+  return normalizarLogos(response.data);
 };
