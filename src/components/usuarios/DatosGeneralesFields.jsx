@@ -4,7 +4,7 @@ import { DEFAULT_USER_PASSWORD, inputClass } from "./usuarioFormConfig";
 const lockedInputClass =
   "w-full cursor-not-allowed rounded-lg border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-500 outline-none ring-1 ring-slate-200";
 
-export default function DatosGeneralesFields({ form, onChange }) {
+export default function DatosGeneralesFields({ form, rol, onChange }) {
   return (
     <section className="space-y-4">
       <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
@@ -63,16 +63,18 @@ export default function DatosGeneralesFields({ form, onChange }) {
           />
         </Field>
 
-        <Field label="Correo Institucional" required>
-          <input
-            className={inputClass}
-            type="email"
-            name="correo"
-            value={form.correo}
-            onChange={onChange}
-            required
-          />
-        </Field>
+        {rol !== "ALUMNO" && (
+          <Field label="Correo Institucional" required>
+            <input
+              className={inputClass}
+              type="email"
+              name="correo"
+              value={form.correo}
+              onChange={onChange}
+              required
+            />
+          </Field>
+        )}
 
         <Field label="Contraseña default" required>
           <input

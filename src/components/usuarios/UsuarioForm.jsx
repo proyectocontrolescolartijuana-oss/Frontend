@@ -20,7 +20,6 @@ export default function UsuarioForm({
   planesDisponibles,
   gruposDisponibles,
   periodos,
-  matriculaSugerida,
   mensaje,
   error,
   guardando,
@@ -63,7 +62,11 @@ export default function UsuarioForm({
 
       <RolSelector rol={rol} onChange={onRolChange} />
 
-      <DatosGeneralesFields form={usuarioForm} onChange={onUsuarioChange} />
+      <DatosGeneralesFields
+        form={usuarioForm}
+        rol={rol}
+        onChange={onUsuarioChange}
+      />
 
       {rol === "ALUMNO" && (
         <AlumnoFields
@@ -72,7 +75,6 @@ export default function UsuarioForm({
           planesDisponibles={planesDisponibles}
           gruposDisponibles={gruposDisponibles}
           periodos={periodos}
-          matriculaSugerida={matriculaSugerida}
           onChange={onAlumnoChange}
         />
       )}

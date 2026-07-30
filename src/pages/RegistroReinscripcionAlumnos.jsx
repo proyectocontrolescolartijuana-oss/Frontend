@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Download, FileText, Search } from "lucide-react";
+import logoUnifront from "../assets/UnifrontLogoColorSinFondo.png";
 import {
   obtenerGruposMaterias,
   obtenerPeriodos,
@@ -146,9 +147,12 @@ export default function RegistroReinscripcionAlumnos() {
 
           .reinscripcion-hoja {
             width: 11in;
-            min-height: 8.5in;
+            height: 8.5in;
             padding: 0.28in 0.55in 0.16in;
             background: #fff;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
           }
 
           .reinscripcion-header {
@@ -159,14 +163,9 @@ export default function RegistroReinscripcionAlumnos() {
           }
 
           .reinscripcion-logo {
-            width: 1.42in;
-            height: 0.55in;
-            border: 1px solid #777;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14pt;
-            font-weight: 900;
+            width: 1.6in;
+            height: 0.62in;
+            object-fit: contain;
           }
 
           .reinscripcion-title {
@@ -230,7 +229,8 @@ export default function RegistroReinscripcionAlumnos() {
           }
 
           .reinscripcion-spacer {
-            min-height: 5.3in;
+            flex: 1 1 auto;
+            min-height: 0.2in;
           }
 
           .reinscripcion-signatures {
@@ -241,6 +241,7 @@ export default function RegistroReinscripcionAlumnos() {
             font-size: 6.2pt;
             font-weight: 900;
             text-align: center;
+            flex: 0 0 auto;
           }
 
           .reinscripcion-signatures p {
@@ -255,6 +256,7 @@ export default function RegistroReinscripcionAlumnos() {
             padding-top: 0.04in;
             font-size: 6.2pt;
             font-weight: 900;
+            flex: 0 0 auto;
           }
 
           .reinscripcion-footer :nth-child(2) {
@@ -289,7 +291,7 @@ export default function RegistroReinscripcionAlumnos() {
               top: 0;
               left: 0;
               width: 11in;
-              min-height: 8.5in;
+              height: 8.5in;
               margin: 0;
               box-shadow: none;
             }
@@ -407,7 +409,11 @@ export default function RegistroReinscripcionAlumnos() {
             className="reinscripcion-hoja reinscripcion-documento mx-auto shadow-sm"
           >
             <header className="reinscripcion-header">
-              <div className="reinscripcion-logo">EDUCACION</div>
+              <img
+                className="reinscripcion-logo"
+                src={logoUnifront}
+                alt="UNIFRONT"
+              />
 
               <div className="reinscripcion-title">
                 <p>{encabezado.dependencia || "Secretaria de Educacion"}</p>

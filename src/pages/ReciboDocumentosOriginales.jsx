@@ -34,12 +34,6 @@ const documentosIniciales = [
     coincide: (texto) => texto.includes("constancia"),
   },
   {
-    key: "fotografias",
-    label: "FOTOGRAFIAS",
-    recibido: true,
-    coincide: (texto) => texto.includes("fotografia") || texto.includes("foto"),
-  },
-  {
     key: "curp",
     label: "CURP",
     recibido: true,
@@ -63,11 +57,7 @@ const clonarDocumentosIniciales = () =>
   }));
 
 const nombreCompleto = (usuario) =>
-  [
-    usuario?.nombre,
-    usuario?.apellido_paterno,
-    usuario?.apellido_materno,
-  ]
+  [usuario?.nombre, usuario?.apellido_paterno, usuario?.apellido_materno]
     .filter(Boolean)
     .join(" ");
 
@@ -149,7 +139,9 @@ export default function ReciboDocumentosOriginales() {
         const usuario = usuariosPorId.get(alumno.id_usuario);
         const carrera = carrerasPorId.get(alumno.id_carrera);
         const nombre =
-          alumno.nombre || nombreCompleto(usuario) || `Alumno #${alumno.id_alumno}`;
+          alumno.nombre ||
+          nombreCompleto(usuario) ||
+          `Alumno #${alumno.id_alumno}`;
 
         return {
           ...alumno,
@@ -519,13 +511,13 @@ export default function ReciboDocumentosOriginales() {
             )}
 
             <label className="relative block">
-              <span className="text-sm font-medium text-slate-700">
-                Alumno
-              </span>
+              <span className="text-sm font-medium text-slate-700">Alumno</span>
               <input
                 type="text"
                 value={
-                  mostrarOpciones ? busquedaAlumno : form.nombreAlumno || busquedaAlumno
+                  mostrarOpciones
+                    ? busquedaAlumno
+                    : form.nombreAlumno || busquedaAlumno
                 }
                 onChange={(event) => {
                   setBusquedaAlumno(event.target.value);
@@ -540,7 +532,9 @@ export default function ReciboDocumentosOriginales() {
                 }}
                 disabled={loading}
                 placeholder={
-                  loading ? "Cargando alumnos..." : "Busca por nombre o matrícula"
+                  loading
+                    ? "Cargando alumnos..."
+                    : "Busca por nombre o matrícula"
                 }
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
               />
@@ -695,13 +689,9 @@ export default function ReciboDocumentosOriginales() {
                 <span className="recibo-label">Tijuana, B.C. a</span>
                 <span className="recibo-linea">{lineValue(form.dia)}</span>
                 <span className="recibo-label">de</span>
-                <span className="recibo-linea">
-                  {lineValue(form.mes)}
-                </span>
+                <span className="recibo-linea">{lineValue(form.mes)}</span>
                 <span className="recibo-label">del 20</span>
-                <span className="recibo-linea">
-                  {lineValue(form.anio)}
-                </span>
+                <span className="recibo-linea">{lineValue(form.anio)}</span>
               </div>
 
               <div className="recibo-row">
@@ -751,7 +741,6 @@ export default function ReciboDocumentosOriginales() {
                 </div>
 
                 <div className="recibo-firma">
-                     
                   <div className="recibo-firma-linea" />
                   {lineValue(form.nombreAlumno)}
                   <p>NOMBRE Y FIRMA</p>

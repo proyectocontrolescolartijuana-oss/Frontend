@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import FormAlert from "../components/usuarios/FormAlert";
+import UsuarioAltaSuccessModal from "../components/usuarios/UsuarioAltaSuccessModal";
 import UsuarioForm from "../components/usuarios/UsuarioForm";
 import {
   alumnoInicial,
@@ -17,10 +18,7 @@ import { obtenerGrupos } from "../services/alumnosGruposService";
 import { obtenerCarreras } from "../services/carrerasService";
 import { obtenerPeriodos } from "../services/periodosService";
 import { obtenerPlanesEstudio } from "../services/planesEstudioService";
-import {
-  crearUsuarioPorRol,
-  obtenerSiguienteMatriculaAlumno,
-} from "../services/usuariosService";
+import { crearUsuarioPorRol } from "../services/usuariosService";
 
 const limpiarPayload = (payload) => {
   return Object.fromEntries(
@@ -77,10 +75,9 @@ export default function UsuariosAltaPage() {
   const [planes, setPlanes] = useState([]);
   const [grupos, setGrupos] = useState([]);
   const [periodos, setPeriodos] = useState([]);
-  const [matriculaSugerida, setMatriculaSugerida] = useState("");
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
-  const [mensaje, setMensaje] = useState("");
+  const [registroCreado, setRegistroCreado] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -91,21 +88,18 @@ export default function UsuariosAltaPage() {
       obtenerPlanesEstudio(),
       obtenerGrupos(),
       obtenerPeriodos(),
-      obtenerSiguienteMatriculaAlumno(),
     ]).then(
       ([
         carrerasResponse,
         planesResponse,
         gruposResponse,
         periodosResponse,
-        matriculaResponse,
       ]) => {
         if (activo) {
           setCarreras(carrerasResponse);
           setPlanes(planesResponse);
           setGrupos(gruposResponse);
           setPeriodos(periodosResponse);
-          setMatriculaSugerida(matriculaResponse);
           setAlumnoForm((prev) => ({
             ...prev,
             id_periodo:
@@ -341,12 +335,12 @@ export default function UsuariosAltaPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setMensaje("");
+    setRegistroCreado(null);
     setError("");
     setGuardando(true);
 
     try {
-      await crearUsuarioPorRol({
+      const resultado = await crearUsuarioPorRol({
         rol,
         usuario: {
           ...limpiarPayload(usuarioForm),
@@ -362,14 +356,13 @@ export default function UsuariosAltaPage() {
           rol === "ALUMNO" ? prepararProcedenciaAcademica() : undefined,
       });
 
-      setMensaje("Usuario creado correctamente.");
-      resetForm();
-
-      try {
-        setMatriculaSugerida(await obtenerSiguienteMatriculaAlumno());
-      } catch (matriculaError) {
-        console.error(matriculaError);
-        setMatriculaSugerida("");
+      if (rol === "ALUMNO") {
+        setRegistroCreado({
+          matricula: resultado.alumno?.matricula || "",
+          correoInstitucional: resultado.usuario?.correo || "",
+        });
+      } else {
+        setRegistroCreado({});
       }
     } catch (requestError) {
       console.error(requestError);
@@ -377,6 +370,11 @@ export default function UsuariosAltaPage() {
     } finally {
       setGuardando(false);
     }
+  };
+
+  const handleCerrarRegistroCreado = () => {
+    setRegistroCreado(null);
+    resetForm();
   };
 
   if (loading) {
@@ -410,7 +408,6 @@ export default function UsuariosAltaPage() {
 
       <div className="h-px w-full bg-slate-200" />
 
-      {mensaje && <FormAlert type="success">{mensaje}</FormAlert>}
       {error && <FormAlert type="error">{error}</FormAlert>}
 
       <div className="max">
@@ -427,7 +424,6 @@ export default function UsuariosAltaPage() {
           planesDisponibles={planesDisponibles}
           gruposDisponibles={gruposDisponibles}
           periodos={periodos}
-          matriculaSugerida={matriculaSugerida}
           mensaje=""
           error=""
           guardando={guardando}
@@ -447,6 +443,12 @@ export default function UsuariosAltaPage() {
           onSubmit={handleSubmit}
         />
       </div>
+
+      <UsuarioAltaSuccessModal
+        open={Boolean(registroCreado)}
+        data={registroCreado}
+        onClose={handleCerrarRegistroCreado}
+      />
     </div>
   );
 }

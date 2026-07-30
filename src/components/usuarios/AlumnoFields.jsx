@@ -1,16 +1,12 @@
 import Field from "./Field";
 import { inputClass } from "./usuarioFormConfig";
 
-const lockedInputClass =
-  "w-full cursor-not-allowed rounded-lg border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-500 outline-none ring-1 ring-slate-200";
-
 export default function AlumnoFields({
   form,
   carreras,
   planesDisponibles,
   gruposDisponibles,
   periodos,
-  matriculaSugerida,
   onChange,
 }) {
   return (
@@ -20,18 +16,7 @@ export default function AlumnoFields({
       </h3>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Field label="Matricula" required>
-          <input
-            className={lockedInputClass}
-            name="matricula"
-            value={matriculaSugerida}
-            readOnly
-            aria-readonly="true"
-            tabIndex={-1}
-          />
-        </Field>
-
-        <Field label="Número de control">
+        <Field label="Numero de control">
           <input
             className={inputClass}
             name="numero_control"
@@ -234,7 +219,7 @@ export default function AlumnoFields({
         </Field>
 
         <div className="md:col-span-2">
-          <Field label="Dirección" required>
+          <Field label="Direccion" required>
             <textarea
               className={inputClass}
               name="direccion"

@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Download, FileText } from "lucide-react";
 import logoUnifront from "../assets/UnifrontLogoColorSinFondo.png";
+import { obtenerAlumnosDetalle } from "../services/usuariosService";
 
 const initialForm = {
+  idAlumno: "",
   sexo: "hombre",
   nombreAlumno: "",
   matricula: "",
@@ -23,6 +25,14 @@ const initialForm = {
   direccion: "Blvd. Bernardo O'Higgins No. 6050, Los Alamos",
   sitioWeb: "www.unifront.mx",
 };
+
+const normalizar = (value = "") =>
+  value
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 
 const textosPorSexo = {
   hombre: {
@@ -51,6 +61,44 @@ const formatDate = (value) => {
 
 export default function ConstanciaEstudios() {
   const [form, setForm] = useState(initialForm);
+  const [alumnos, setAlumnos] = useState([]);
+  const [loadingAlumnos, setLoadingAlumnos] = useState(true);
+  const [errorAlumnos, setErrorAlumnos] = useState("");
+  const [busquedaAlumno, setBusquedaAlumno] = useState("");
+  const [mostrarOpciones, setMostrarOpciones] = useState(false);
+
+  useEffect(() => {
+    let activo = true;
+
+    const cargarAlumnos = async () => {
+      setLoadingAlumnos(true);
+      setErrorAlumnos("");
+
+      try {
+        const alumnosResponse = await obtenerAlumnosDetalle();
+
+        if (!activo) return;
+
+        setAlumnos(alumnosResponse);
+      } catch (requestError) {
+        console.error(requestError);
+
+        if (activo) {
+          setErrorAlumnos("No se pudo cargar la lista de alumnos.");
+        }
+      } finally {
+        if (activo) {
+          setLoadingAlumnos(false);
+        }
+      }
+    };
+
+    cargarAlumnos();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   const fechaLegible = useMemo(
     () => formatDate(form.fechaEmision),
@@ -58,6 +106,52 @@ export default function ConstanciaEstudios() {
   );
 
   const textos = textosPorSexo[form.sexo];
+
+  const alumnosDetalle = useMemo(() => {
+    return [...alumnos].sort((a, b) =>
+      (a.nombre || "").localeCompare(b.nombre || "", "es"),
+    );
+  }, [alumnos]);
+
+  const alumnosFiltrados = useMemo(() => {
+    const texto = normalizar(busquedaAlumno);
+
+    if (!texto) return alumnosDetalle;
+
+    return alumnosDetalle.filter((alumno) => {
+      const datos = normalizar(
+        [
+          alumno.nombre,
+          alumno.matricula,
+          alumno.numero_control,
+          alumno.carrera?.nombre,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      );
+
+      return datos.includes(texto);
+    });
+  }, [alumnosDetalle, busquedaAlumno]);
+
+  const handleAlumnoChange = (idAlumno) => {
+    const alumno = alumnosDetalle.find(
+      (item) => Number(item.id_alumno) === Number(idAlumno),
+    );
+
+    setForm((currentForm) => ({
+      ...currentForm,
+      idAlumno,
+      sexo:
+        normalizar(alumno?.sexo).startsWith("f") ||
+        normalizar(alumno?.sexo).startsWith("mujer")
+          ? "mujer"
+          : currentForm.sexo,
+      nombreAlumno: alumno?.nombre || "",
+      matricula: alumno?.matricula || "",
+      carrera: alumno?.carrera?.nombre || "",
+    }));
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -399,6 +493,12 @@ export default function ConstanciaEstudios() {
           </h2>
 
           <div className="mt-5 space-y-4">
+            {errorAlumnos && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                {errorAlumnos}
+              </div>
+            )}
+
             <fieldset>
               <legend className="text-sm font-medium text-slate-700">
                 Sexo del alumno
@@ -431,17 +531,68 @@ export default function ConstanciaEstudios() {
               </div>
             </fieldset>
 
-            <label className="block">
+            <label className="relative block">
               <span className="text-sm font-medium text-slate-700">
                 Nombre completo
               </span>
               <input
-                name="nombreAlumno"
-                value={form.nombreAlumno}
-                onChange={handleChange}
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                placeholder="Ej. Isabella Perez Torres"
+                type="text"
+                value={
+                  mostrarOpciones
+                    ? busquedaAlumno
+                    : form.nombreAlumno || busquedaAlumno
+                }
+                onChange={(event) => {
+                  setBusquedaAlumno(event.target.value);
+                  setMostrarOpciones(true);
+                  setForm((currentForm) => ({
+                    ...currentForm,
+                    idAlumno: "",
+                    nombreAlumno: event.target.value,
+                  }));
+                }}
+                onFocus={() => {
+                  setBusquedaAlumno("");
+                  setMostrarOpciones(true);
+                }}
+                onBlur={() => {
+                  setTimeout(() => setMostrarOpciones(false), 150);
+                }}
+                disabled={loadingAlumnos}
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                placeholder={
+                  loadingAlumnos
+                    ? "Cargando alumnos..."
+                    : "Busca por nombre o matricula"
+                }
               />
+
+              {mostrarOpciones && (
+                <div className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                  {alumnosFiltrados.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-slate-500">
+                      Sin resultados
+                    </div>
+                  )}
+
+                  {alumnosFiltrados.map((alumno) => (
+                    <button
+                      key={alumno.id_alumno}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        handleAlumnoChange(alumno.id_alumno);
+                        setBusquedaAlumno("");
+                        setMostrarOpciones(false);
+                      }}
+                      className="block w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
+                    >
+                      {alumno.nombre}
+                      {alumno.matricula ? ` - ${alumno.matricula}` : ""}
+                    </button>
+                  ))}
+                </div>
+              )}
             </label>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

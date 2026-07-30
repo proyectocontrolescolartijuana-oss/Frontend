@@ -11,6 +11,7 @@ import {
   GraduationCap,
   Library,
   User,
+  UserRound,
   FileText,
   FileStack,
   FileSpreadsheet,
@@ -38,35 +39,18 @@ export const sidebarSections = [
         icon: GraduationCap,
         label: "Carreras",
         path: "/carreras",
-        roles: ["ADMIN"],
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
       {
         icon: Library,
         label: "Materias",
         path: "/materias",
-        roles: ["ADMIN"],
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
       {
         icon: BookOpen,
         label: "Planes de estudio",
         path: "/planes-estudio",
-        roles: ["ADMIN"],
-      },
-    ],
-  },
-  {
-    title: "Escolar",
-    items: [
-      {
-        icon: Users,
-        label: "Grupos",
-        path: "/grupos",
-        roles: ["ADMIN", "CONTROL_ESCOLAR"],
-      },
-      {
-        icon: Users,
-        label: "Cargas academicas",
-        path: "/alumnos",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
       {
@@ -75,6 +59,23 @@ export const sidebarSections = [
         path: "/periodos",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
+      {
+        icon: Users,
+        label: "Grupos",
+        path: "/grupos",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+      {
+        icon: Users,
+        label: "Carga académica",
+        path: "/alumnos",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+    ],
+  },
+  {
+    title: "Escolar",
+    items: [
       {
         icon: Users,
         label: "Promedios",
@@ -97,13 +98,19 @@ export const sidebarSections = [
         icon: Award,
         label: "Cuadro de honor",
         path: "/cuadro-honor",
-        roles: ["ADMIN"],
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
     ],
   },
   {
     title: "Docentes",
     items: [
+      {
+        icon: UserRound,
+        label: "Mi perfil",
+        path: "/docente/perfil",
+        roles: ["DOCENTE"],
+      },
       {
         icon: ClipboardList,
         label: "Calificaciones",
@@ -125,7 +132,25 @@ export const sidebarSections = [
         icon: User,
         label: "Usuarios",
         path: "/usuarios",
-        roles: ["ADMIN"],
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+      {
+        icon: BookOpen,
+        label: "Ficha de inscripcion",
+        path: "/ficha-inscripcion",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+      {
+        icon: FileStack,
+        label: "Expediente digital",
+        path: "/documentos-alumno",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+      {
+        icon: Award,
+        label: "Titulaciones",
+        path: "/titulaciones",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
     ],
   },
@@ -228,6 +253,12 @@ export const sidebarSections = [
       },
       {
         icon: BookOpen,
+        label: "Acta de titulacion licenciatura",
+        path: "/acta-titulacion-licenciatura",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+      {
+        icon: BookOpen,
         label: "Recibo documentos originales",
         path: "/recibo-documentos-originales",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
@@ -242,18 +273,6 @@ export const sidebarSections = [
         icon: BookOpen,
         label: "Boleta final",
         path: "/boleta-final",
-        roles: ["ADMIN", "CONTROL_ESCOLAR"],
-      },
-      {
-        icon: BookOpen,
-        label: "Ficha de inscripcion",
-        path: "/ficha-inscripcion",
-        roles: ["ADMIN", "CONTROL_ESCOLAR"],
-      },
-      {
-        icon: FileStack,
-        label: "Expediente digital",
-        path: "/documentos-alumno",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
     ],

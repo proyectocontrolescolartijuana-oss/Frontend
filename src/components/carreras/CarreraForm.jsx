@@ -7,6 +7,7 @@ const getInitialForm = (carrera) => ({
   nombre: carrera?.nombre || "",
   nivel: carrera?.nivel || "LICENCIATURA",
   duracion_cuatrimestres: carrera?.duracion_cuatrimestres || 9,
+  fecha_autorizacion: carrera?.fecha_autorizacion || "",
   estado: carrera?.estado ?? true,
 });
 
@@ -113,6 +114,21 @@ export default function CarreraForm({
             value={form.nombre}
             onChange={handleChange}
             placeholder="Ej. Ingeniería en Sistemas"
+            className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Fecha de autorización
+          </label>
+
+          <input
+            type="date"
+            name="fecha_autorizacion"
+            value={form.fecha_autorizacion}
+            onChange={handleChange}
             className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
             required
           />

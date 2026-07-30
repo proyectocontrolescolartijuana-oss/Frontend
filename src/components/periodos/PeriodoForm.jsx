@@ -32,8 +32,8 @@ export default function PeriodoForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (form.fecha_fin < form.fecha_inicio) {
-      setError("La fecha de fin no puede ser anterior a la fecha de inicio.");
+    if (form.fecha_fin <= form.fecha_inicio) {
+      setError("La fecha de fin debe ser posterior a la fecha de inicio.");
       return;
     }
 
@@ -151,13 +151,15 @@ export default function PeriodoForm({
               className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
             >
               <option value="ACTIVO">ACTIVO</option>
+              <option value="PENDIENTE">PENDIENTE</option>
               <option value="CERRADO">CERRADO</option>
             </select>
 
             {periodo?.estado !== "CERRADO" && form.estado === "CERRADO" && (
               <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                Al cerrar este periodo, los grupos con materias asignadas en el
-                periodo avanzaran al siguiente cuatrimestre.
+                Al cerrar este periodo se generara historial, avanzaran los
+                grupos, se activara el siguiente periodo pendiente y se crearan
+                las materias-grupo con alumnos elegibles.
               </p>
             )}
           </div>

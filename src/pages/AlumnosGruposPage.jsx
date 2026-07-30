@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Plus,
   RefreshCw,
+  Save,
   Search,
   Trash2,
   X,
@@ -12,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import {
+  actualizarGrupoMateria,
   crearGrupoMateria,
   crearCargaAcademica,
   eliminarCargaAcademica,
@@ -20,7 +22,10 @@ import {
   obtenerCargasAcademicas,
   obtenerGruposMaterias,
 } from "../services/alumnosGruposService";
-import { nombreAlumnoApellidosPrimero } from "../utils/nombres";
+import {
+  nombreAlumnoApellidosPrimero,
+  nombreApellidosPrimero,
+} from "../utils/nombres";
 
 const obtenerFechaActual = () => new Date().toISOString().slice(0, 10);
 
@@ -67,6 +72,10 @@ const getGrupoMeta = (grupoMateria) => {
     .join(" | ");
 };
 
+const esGrupoMateriaActivo = (grupoMateria) => {
+  return grupoMateria?.periodo?.estado === "ACTIVO";
+};
+
 const getAlumnoTexto = (alumno) => {
   return [
     nombreAlumnoApellidosPrimero(alumno, ""),
@@ -79,7 +88,10 @@ const getAlumnoTexto = (alumno) => {
 };
 
 const getDocenteLabel = (docente) => {
-  return docente.numero_empleado || `Docente ${docente.id_docente}`;
+  return nombreApellidosPrimero(
+    docente.usuario,
+    docente.nombre || docente.numero_empleado || `Docente ${docente.id_docente}`,
+  );
 };
 
 const getMateriaOptionLabel = (materia) => {
@@ -96,9 +108,12 @@ export default function AlumnosGruposPage() {
   const [docentes, setDocentes] = useState([]);
   const [periodos, setPeriodos] = useState([]);
   const [planes, setPlanes] = useState([]);
+  const [carreras, setCarreras] = useState([]);
   const [cargas, setCargas] = useState([]);
   const [grupoSeleccionadoId, setGrupoSeleccionadoId] = useState("");
   const [busquedaGrupo, setBusquedaGrupo] = useState("");
+  const [carreraFiltro, setCarreraFiltro] = useState("TODAS");
+  const [estadoOfertaFiltro, setEstadoOfertaFiltro] = useState("TODAS");
   const [busquedaAlumno, setBusquedaAlumno] = useState("");
   const [ofertaAbierta, setOfertaAbierta] = useState(false);
   const [ofertaForm, setOfertaForm] = useState({
@@ -110,6 +125,10 @@ export default function AlumnosGruposPage() {
     aula: "",
     cupo_maximo: "40",
   });
+  const [asignacionForm, setAsignacionForm] = useState({
+    id_docente: "",
+    aula: "",
+  });
   const [oportunidad, setOportunidad] = useState("ORDINARIO");
   const [intento, setIntento] = useState(1);
   const [fechaInscripcion, setFechaInscripcion] = useState(
@@ -118,18 +137,23 @@ export default function AlumnosGruposPage() {
   const [loading, setLoading] = useState(true);
   const [loadingCargas, setLoadingCargas] = useState(false);
   const [guardandoOferta, setGuardandoOferta] = useState(false);
+  const [guardandoAsignacion, setGuardandoAsignacion] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
+  const gruposMateriasActivos = useMemo(() => {
+    return gruposMaterias.filter(esGrupoMateriaActivo);
+  }, [gruposMaterias]);
+
   const grupoSeleccionado = useMemo(() => {
-    return gruposMaterias.find(
+    return gruposMateriasActivos.find(
       (grupoMateria) =>
         String(grupoMateria.id_grupo_materia) ===
         String(grupoSeleccionadoId),
     );
-  }, [gruposMaterias, grupoSeleccionadoId]);
+  }, [gruposMateriasActivos, grupoSeleccionadoId]);
 
   const getPlanParaGrupo = (grupoId) => {
     const grupo = grupos.find(
@@ -157,11 +181,11 @@ export default function AlumnosGruposPage() {
     setDocentes(catalogos.docentes);
     setPeriodos(catalogos.periodos);
     setPlanes(catalogos.planes);
+    setCarreras(catalogos.carreras || []);
     setOfertaForm((prev) => ({
       ...prev,
       id_grupo: prev.id_grupo || grupoInicial?.id_grupo || "",
       id_plan: prev.id_plan || planInicial?.id_plan || "",
-      id_docente: prev.id_docente || catalogos.docentes[0]?.id_docente || "",
       id_periodo: prev.id_periodo || periodoActivo?.id_periodo || "",
     }));
   };
@@ -181,17 +205,19 @@ export default function AlumnosGruposPage() {
       aplicarCatalogosOferta(catalogosResponse);
       setAlumnos(alumnosResponse);
       setGruposMaterias(gruposResponse);
-      if (gruposResponse.length === 0) {
+      const gruposActivos = gruposResponse.filter(esGrupoMateriaActivo);
+
+      if (gruposActivos.length === 0) {
         setCargas([]);
       }
-      const existeActual = gruposResponse.some(
+      const existeActual = gruposActivos.some(
         (grupoMateria) =>
           String(grupoMateria.id_grupo_materia) ===
           String(grupoSeleccionadoId),
       );
       const siguienteGrupoId = existeActual
         ? grupoSeleccionadoId
-        : gruposResponse[0]?.id_grupo_materia || "";
+        : gruposActivos[0]?.id_grupo_materia || "";
 
       setGrupoSeleccionadoId(siguienteGrupoId);
 
@@ -243,8 +269,10 @@ export default function AlumnosGruposPage() {
         aplicarCatalogosOferta(catalogosResponse);
         setAlumnos(alumnosResponse);
         setGruposMaterias(gruposResponse);
-        setLoadingCargas(Boolean(gruposResponse[0]?.id_grupo_materia));
-        setGrupoSeleccionadoId(gruposResponse[0]?.id_grupo_materia || "");
+        const gruposActivos = gruposResponse.filter(esGrupoMateriaActivo);
+
+        setLoadingCargas(Boolean(gruposActivos[0]?.id_grupo_materia));
+        setGrupoSeleccionadoId(gruposActivos[0]?.id_grupo_materia || "");
       })
       .catch((requestError) => {
         console.error(requestError);
@@ -297,10 +325,17 @@ export default function AlumnosGruposPage() {
     };
   }, [grupoSeleccionadoId]);
 
+  useEffect(() => {
+    setAsignacionForm({
+      id_docente: grupoSeleccionado?.docente?.id_docente || "",
+      aula: grupoSeleccionado?.aula || "",
+    });
+  }, [grupoSeleccionado]);
+
   const gruposFiltrados = useMemo(() => {
     const busqueda = normalizarTexto(busquedaGrupo.trim());
 
-    return gruposMaterias.filter((grupoMateria) => {
+    return gruposMateriasActivos.filter((grupoMateria) => {
       const texto = normalizarTexto(
         [
           grupoMateria.materia?.nombre,
@@ -312,10 +347,46 @@ export default function AlumnosGruposPage() {
           .filter(Boolean)
           .join(" "),
       );
+      const coincideCarrera =
+        carreraFiltro === "TODAS" ||
+        String(grupoMateria.grupo?.id_carrera) === String(carreraFiltro);
+      const coincideEstado =
+        estadoOfertaFiltro === "TODAS" ||
+        (estadoOfertaFiltro === "SIN_DOCENTE" && !grupoMateria.docente) ||
+        (estadoOfertaFiltro === "SIN_AULA" && !grupoMateria.aula) ||
+        (estadoOfertaFiltro === "COMPLETAS" &&
+          grupoMateria.docente &&
+          grupoMateria.aula);
 
-      return busqueda === "" || texto.includes(busqueda);
+      return (
+        coincideCarrera &&
+        coincideEstado &&
+        (busqueda === "" || texto.includes(busqueda))
+      );
     });
-  }, [gruposMaterias, busquedaGrupo]);
+  }, [
+    gruposMateriasActivos,
+    busquedaGrupo,
+    carreraFiltro,
+    estadoOfertaFiltro,
+  ]);
+
+  const carreraOfertaId = useMemo(() => {
+    const plan = planes.find(
+      (item) => String(item.id_plan) === String(ofertaForm.id_plan),
+    );
+
+    return plan?.carrera?.id_carrera ?? null;
+  }, [planes, ofertaForm.id_plan]);
+
+  const gruposDisponiblesOferta = useMemo(() => {
+    return grupos.filter((grupo) => {
+      return (
+        carreraOfertaId === null ||
+        String(grupo.id_carrera) === String(carreraOfertaId)
+      );
+    });
+  }, [grupos, carreraOfertaId]);
 
   const materiasOferta = useMemo(() => {
     const plan = planes.find(
@@ -356,6 +427,22 @@ export default function AlumnosGruposPage() {
   }, [materiasOferta, materiasOfertadasIds]);
 
   useEffect(() => {
+    const grupoExiste = gruposDisponiblesOferta.some(
+      (grupo) => String(grupo.id_grupo) === String(ofertaForm.id_grupo),
+    );
+
+    if (grupoExiste) {
+      return;
+    }
+
+    setOfertaForm((prev) => ({
+      ...prev,
+      id_grupo: gruposDisponiblesOferta[0]?.id_grupo || "",
+      id_materia: "",
+    }));
+  }, [gruposDisponiblesOferta, ofertaForm.id_grupo]);
+
+  useEffect(() => {
     const materiaExiste = materiasDisponiblesOferta.some(
       (materia) => String(materia.id_materia) === String(ofertaForm.id_materia),
     );
@@ -378,12 +465,32 @@ export default function AlumnosGruposPage() {
     );
   }, [cargas]);
 
+  const carreraGrupoSeleccionadoId = useMemo(() => {
+    const carreraId = grupoSeleccionado?.grupo?.id_carrera;
+
+    if (carreraId !== undefined && carreraId !== null) {
+      return carreraId;
+    }
+
+    const grupo = grupos.find(
+      (item) =>
+        String(item.id_grupo) === String(grupoSeleccionado?.grupo?.id_grupo),
+    );
+
+    return grupo?.id_carrera ?? null;
+  }, [grupoSeleccionado, grupos]);
+
   const candidatos = useMemo(() => {
     const busqueda = normalizarTexto(busquedaAlumno.trim());
 
     return alumnos
       .filter((alumno) => alumno.estatus !== "BAJA")
       .filter((alumno) => !alumnosInscritosIds.has(alumno.id_alumno))
+      .filter(
+        (alumno) =>
+          carreraGrupoSeleccionadoId === null ||
+          String(alumno.id_carrera) === String(carreraGrupoSeleccionadoId),
+      )
       .filter((alumno) => {
         const texto = normalizarTexto(getAlumnoTexto(alumno));
 
@@ -394,7 +501,7 @@ export default function AlumnosGruposPage() {
           nombreAlumnoApellidosPrimero(b, ""),
         ),
       );
-  }, [alumnos, alumnosInscritosIds, busquedaAlumno]);
+  }, [alumnos, alumnosInscritosIds, busquedaAlumno, carreraGrupoSeleccionadoId]);
 
   const cargasOrdenadas = useMemo(() => {
     return [...cargas].sort((a, b) =>
@@ -455,16 +562,60 @@ export default function AlumnosGruposPage() {
     }));
   };
 
+  const handleAsignacionChange = (event) => {
+    const { name, value } = event.target;
+
+    setAsignacionForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    setMensaje("");
+    setError("");
+  };
+
+  const handleGuardarAsignacion = async (event) => {
+    event.preventDefault();
+
+    if (!grupoSeleccionado || guardandoAsignacion) {
+      return;
+    }
+
+    setMensaje("");
+    setError("");
+    setGuardandoAsignacion(true);
+
+    try {
+      const actualizado = await actualizarGrupoMateria(
+        grupoSeleccionado.id_grupo_materia,
+        {
+          id_docente: asignacionForm.id_docente
+            ? Number(asignacionForm.id_docente)
+            : null,
+          aula: asignacionForm.aula.trim() || null,
+        },
+      );
+      const gruposResponse = await obtenerGruposMaterias();
+
+      setGruposMaterias(gruposResponse);
+      setGrupoSeleccionadoId(actualizado.id_grupo_materia);
+      setMensaje("Docente y aula actualizados correctamente.");
+    } catch (requestError) {
+      console.error(requestError);
+      setError(obtenerMensajeError(requestError));
+    } finally {
+      setGuardandoAsignacion(false);
+    }
+  };
+
   const handleCrearGrupoMateria = async (event) => {
     event.preventDefault();
 
     if (
       !ofertaForm.id_grupo ||
       !ofertaForm.id_materia ||
-      !ofertaForm.id_docente ||
       !ofertaForm.id_periodo
     ) {
-      setError("Selecciona grupo, materia, docente y periodo.");
+      setError("Selecciona grupo, materia y periodo.");
       return;
     }
 
@@ -476,7 +627,9 @@ export default function AlumnosGruposPage() {
       const grupoMateria = await crearGrupoMateria({
         id_grupo: Number(ofertaForm.id_grupo),
         id_materia: Number(ofertaForm.id_materia),
-        id_docente: Number(ofertaForm.id_docente),
+        id_docente: ofertaForm.id_docente
+          ? Number(ofertaForm.id_docente)
+          : null,
         id_periodo: Number(ofertaForm.id_periodo),
         aula: ofertaForm.aula.trim() || null,
         cupo_maximo: ofertaForm.cupo_maximo
@@ -655,13 +808,18 @@ export default function AlumnosGruposPage() {
                 name="id_grupo"
                 value={ofertaForm.id_grupo}
                 onChange={handleOfertaChange}
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                disabled={gruposDisponiblesOferta.length === 0}
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
               >
-                {grupos.map((grupo) => (
-                  <option key={grupo.id_grupo} value={grupo.id_grupo}>
-                    {grupo.nombre || `Grupo ${grupo.id_grupo}`}
-                  </option>
-                ))}
+                {gruposDisponiblesOferta.length === 0 ? (
+                  <option value="">Sin grupos registrados</option>
+                ) : (
+                  gruposDisponiblesOferta.map((grupo) => (
+                    <option key={grupo.id_grupo} value={grupo.id_grupo}>
+                      {grupo.nombre || `Grupo ${grupo.id_grupo}`}
+                    </option>
+                  ))
+                )}
               </select>
             </label>
 
@@ -694,6 +852,7 @@ export default function AlumnosGruposPage() {
                 onChange={handleOfertaChange}
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               >
+                <option value="">Pendiente de asignar</option>
                 {docentes.map((docente) => (
                   <option key={docente.id_docente} value={docente.id_docente}>
                     {getDocenteLabel(docente)}
@@ -776,7 +935,7 @@ export default function AlumnosGruposPage() {
                 Materias y grupos
               </h2>
               <span className="rounded-md bg-slate-100 px-2.5 py-1 text-sm font-semibold text-slate-700">
-                {gruposMaterias.length}
+                {gruposMateriasActivos.length}
               </span>
             </div>
 
@@ -790,6 +949,30 @@ export default function AlumnosGruposPage() {
                 className="min-w-0 flex-1 bg-transparent text-slate-900 outline-none placeholder:text-slate-400"
               />
             </label>
+
+            <select
+              value={carreraFiltro}
+              onChange={(event) => setCarreraFiltro(event.target.value)}
+              className="mt-3 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            >
+              <option value="TODAS">Todas las carreras</option>
+              {carreras.map((carrera) => (
+                <option key={carrera.id_carrera} value={carrera.id_carrera}>
+                  {carrera.nombre}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={estadoOfertaFiltro}
+              onChange={(event) => setEstadoOfertaFiltro(event.target.value)}
+              className="mt-3 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            >
+              <option value="TODAS">Todas las asignaciones</option>
+              <option value="SIN_DOCENTE">Sin docente</option>
+              <option value="SIN_AULA">Sin aula</option>
+              <option value="COMPLETAS">Completas</option>
+            </select>
           </div>
 
           {gruposFiltrados.length === 0 ? (
@@ -837,6 +1020,18 @@ export default function AlumnosGruposPage() {
                         <p className="mt-1 line-clamp-2 text-xs text-slate-400">
                           {getGrupoMeta(grupoMateria)}
                         </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {!grupoMateria.docente && (
+                            <span className="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                              Sin docente
+                            </span>
+                          )}
+                          {!grupoMateria.aula && (
+                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                              Sin aula
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -862,6 +1057,18 @@ export default function AlumnosGruposPage() {
                     <p className="mt-1 text-sm text-slate-500">
                       {getGrupoMeta(grupoSeleccionado)}
                     </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {!grupoSeleccionado.docente && (
+                        <span className="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                          Docente pendiente
+                        </span>
+                      )}
+                      {!grupoSeleccionado.aula && (
+                        <span className="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                          Aula pendiente
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <span
@@ -911,6 +1118,55 @@ export default function AlumnosGruposPage() {
                   </div>
                 </div>
               </div>
+
+              <form
+                onSubmit={handleGuardarAsignacion}
+                className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+              >
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px_auto] lg:items-end">
+                  <label className="space-y-1.5 text-sm font-semibold text-slate-700">
+                    <span>Docente</span>
+                    <select
+                      name="id_docente"
+                      value={asignacionForm.id_docente}
+                      onChange={handleAsignacionChange}
+                      className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    >
+                      <option value="">Pendiente de asignar</option>
+                      {docentes.map((docente) => (
+                        <option
+                          key={docente.id_docente}
+                          value={docente.id_docente}
+                        >
+                          {getDocenteLabel(docente)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-semibold text-slate-700">
+                    <span>Aula</span>
+                    <input
+                      type="text"
+                      name="aula"
+                      value={asignacionForm.aula}
+                      onChange={handleAsignacionChange}
+                      placeholder="Ej. A-12"
+                      maxLength={20}
+                      className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={guardandoAsignacion}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Save size={18} />
+                    {guardandoAsignacion ? "Guardando..." : "Guardar"}
+                  </button>
+                </div>
+              </form>
 
               <div className="grid grid-cols-1 gap-5 2xl:grid-cols-[1fr_420px]">
                 <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">

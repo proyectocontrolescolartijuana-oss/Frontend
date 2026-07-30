@@ -739,26 +739,6 @@ export default function AsistenciaPage() {
           <p className="mt-1 text-slate-500">
             Controla la asistencia de tus materias y grupos activos.
           </p>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700 shadow-sm">
-              <span className="block text-xs uppercase tracking-[0.2em] text-slate-400">
-                Usuario
-              </span>
-              <span className="mt-1 block text-base font-semibold text-slate-900">
-                {getUsuarioNombre(user)}
-              </span>
-            </div>
-
-            <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700 shadow-sm">
-              <span className="block text-xs uppercase tracking-[0.2em] text-slate-400">
-                Cuatrimestre
-              </span>
-              <span className="mt-1 block text-base font-semibold text-slate-900">
-                {getCuatrimestreTexto(captura?.grupo_materia) || "No disponible"}
-              </span>
-            </div>
-          </div>
         </div>
 
         <button
@@ -875,9 +855,7 @@ export default function AsistenciaPage() {
               <select
                 id="parcial-asistencia"
                 value={
-                  parcialSeleccionadoId ||
-                  captura.parcial_seleccionado_id ||
-                  ""
+                  parcialSeleccionadoId || captura.parcial_seleccionado_id || ""
                 }
                 onChange={(event) => {
                   setMensaje("");
@@ -1235,7 +1213,9 @@ export default function AsistenciaPage() {
               />
 
               <div className="asistencia-pdf-title">
-                <div>CENTRO DE ESTUDIOS SUPERIORES DE LA FRONTERA, UNIFRONT</div>
+                <div>
+                  CENTRO DE ESTUDIOS SUPERIORES DE LA FRONTERA, UNIFRONT
+                </div>
                 <div>DEPARTAMENTO DE CONTROL ESCOLAR</div>
                 <div>
                   CONTROL DE ASISTENCIA Y REGISTRO DE ACTIVIDADES DE
@@ -1325,8 +1305,13 @@ export default function AsistenciaPage() {
                 </tr>
                 <tr>
                   {pdfAttendanceColumns.map((fecha) => (
-                    <th key={`asistencia-${fecha}`} className="asistencia-pdf-date">
-                      {pdfMode === "capturada" ? formatFecha(fecha).slice(0, 5) : ""}
+                    <th
+                      key={`asistencia-${fecha}`}
+                      className="asistencia-pdf-date"
+                    >
+                      {pdfMode === "capturada"
+                        ? formatFecha(fecha).slice(0, 5)
+                        : ""}
                     </th>
                   ))}
                   {Array.from({ length: PDF_ACTIVITY_COLUMNS }, (_, index) => (
@@ -1365,12 +1350,15 @@ export default function AsistenciaPage() {
                           : ""}
                       </td>
                     ))}
-                    {Array.from({ length: PDF_ACTIVITY_COLUMNS }, (_, index) => (
-                      <td
-                        key={`act-${alumno?.id_carga || "empty"}-${index + 1}`}
-                        className="asistencia-pdf-activity"
-                      />
-                    ))}
+                    {Array.from(
+                      { length: PDF_ACTIVITY_COLUMNS },
+                      (_, index) => (
+                        <td
+                          key={`act-${alumno?.id_carga || "empty"}-${index + 1}`}
+                          className="asistencia-pdf-activity"
+                        />
+                      ),
+                    )}
                     {["C1", "C2", "C3", "C4", "C5", "EPA"].map((label) => (
                       <td
                         key={`${label}-${alumno?.id_carga || index}`}
@@ -1441,8 +1429,8 @@ export default function AsistenciaPage() {
                   </tr>
                   <tr>
                     <td>
-                      2-La asistencia debera anotarse con un punto (.),
-                      la inasistencia con una diagonal (/) y el retardo con una
+                      2-La asistencia debera anotarse con un punto (.), la
+                      inasistencia con una diagonal (/) y el retardo con una
                       equis (x).
                     </td>
                   </tr>

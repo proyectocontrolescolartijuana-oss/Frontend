@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, FileText } from "lucide-react";
 import logoUnifront from "../assets/UnifrontLogoColorSinFondo.png";
+import { obtenerGrupos, obtenerPeriodos } from "../services/alumnosGruposService";
+import { obtenerCuatrimestres } from "../services/planesEstudioService";
 import { obtenerAlumnosDetalle } from "../services/usuariosService";
 import { formatDateDDMMYYYY } from "../utils/fechas";
+
+const DIRECCION_ESCUELA = "Blvd. Bernardo O'Higgins No. 6050, Los Alamos";
 
 const normalizar = (value = "") =>
   value
@@ -16,7 +20,7 @@ const initialForm = {
   idAlumno: "",
   fecha: "",
   periodo: "",
-  direccionEscuela: "",
+  direccionEscuela: DIRECCION_ESCUELA,
   nombreAlumno: "",
   licenciatura: "",
   matricula: "",
@@ -31,6 +35,9 @@ const initialForm = {
 export default function ActaExamenExtraordinario() {
   const [form, setForm] = useState(initialForm);
   const [alumnos, setAlumnos] = useState([]);
+  const [grupos, setGrupos] = useState([]);
+  const [cuatrimestres, setCuatrimestres] = useState([]);
+  const [periodos, setPeriodos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busquedaAlumno, setBusquedaAlumno] = useState("");
@@ -44,11 +51,24 @@ export default function ActaExamenExtraordinario() {
       setError("");
 
       try {
-        const alumnosResponse = await obtenerAlumnosDetalle();
+        const [
+          alumnosResponse,
+          gruposResponse,
+          cuatrimestresResponse,
+          periodosResponse,
+        ] = await Promise.all([
+          obtenerAlumnosDetalle(),
+          obtenerGrupos(),
+          obtenerCuatrimestres(),
+          obtenerPeriodos(),
+        ]);
 
         if (!activo) return;
 
         setAlumnos(alumnosResponse);
+        setGrupos(gruposResponse);
+        setCuatrimestres(cuatrimestresResponse);
+        setPeriodos(periodosResponse);
       } catch (requestError) {
         console.error(requestError);
 
@@ -69,11 +89,38 @@ export default function ActaExamenExtraordinario() {
     };
   }, []);
 
+  const gruposPorId = useMemo(
+    () => new Map(grupos.map((grupo) => [Number(grupo.id_grupo), grupo])),
+    [grupos],
+  );
+
+  const cuatrimestresPorId = useMemo(
+    () =>
+      new Map(
+        cuatrimestres.map((cuatrimestre) => [
+          Number(cuatrimestre.id_cuatrimestre),
+          cuatrimestre,
+        ]),
+      ),
+    [cuatrimestres],
+  );
+
   const alumnosDetalle = useMemo(() => {
-    return [...alumnos].sort((a, b) =>
-      (a.nombre || "").localeCompare(b.nombre || ""),
-    );
-  }, [alumnos]);
+    return alumnos
+      .map((alumno) => {
+        const grupoCatalogo = gruposPorId.get(Number(alumno.grupo?.id_grupo));
+        const cuatrimestre = cuatrimestresPorId.get(
+          Number(grupoCatalogo?.id_cuatrimestre),
+        );
+
+        return {
+          ...alumno,
+          grupoCatalogo,
+          cuatrimestre,
+        };
+      })
+      .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
+  }, [alumnos, cuatrimestresPorId, gruposPorId]);
 
   const alumnosFiltrados = useMemo(() => {
     const texto = normalizar(busquedaAlumno);
@@ -82,12 +129,22 @@ export default function ActaExamenExtraordinario() {
 
     return alumnosDetalle.filter((alumno) => {
       const datos = normalizar(
-        [alumno.nombre, alumno.matricula].filter(Boolean).join(" "),
+        [alumno.nombre, alumno.matricula, alumno.numero_control]
+          .filter(Boolean)
+          .join(" "),
       );
 
       return datos.includes(texto);
     });
   }, [alumnosDetalle, busquedaAlumno]);
+
+  const periodoActivo = useMemo(() => {
+    return (
+      periodos.find((periodo) => periodo.estado === "ACTIVO") ||
+      periodos[0] ||
+      null
+    );
+  }, [periodos]);
 
   const handleAlumnoChange = (idAlumno) => {
     const alumno = alumnosDetalle.find(
@@ -97,9 +154,13 @@ export default function ActaExamenExtraordinario() {
     setForm((currentForm) => ({
       ...currentForm,
       idAlumno,
+      periodo: periodoActivo?.nombre || "",
+      direccionEscuela: DIRECCION_ESCUELA,
       nombreAlumno: alumno?.nombre || "",
       licenciatura: alumno?.carrera?.nombre || "",
       matricula: alumno?.matricula || "",
+      cuatrimestre: alumno?.cuatrimestre?.nombre || "",
+      grupo: alumno?.grupo?.nombre || alumno?.grupoCatalogo?.nombre || "",
     }));
   };
 

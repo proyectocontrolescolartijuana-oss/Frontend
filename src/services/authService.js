@@ -6,7 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 export const loginRequest = async (email, password) => {
   const formData = new URLSearchParams();
 
-  formData.append("username", email);
+  formData.append("username", email);  
 
   formData.append("password", password);
 

@@ -153,14 +153,14 @@ export default function CuadroHonorPage() {
           </p>
         </div>
 
-        <button
+        {/* <button
           type="button"
           disabled={alumnosVista.length === 0}
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#0B245B] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Download size={18} />
           Exportar lista (aun no funciona)
-        </button>
+        </button> */}
       </div>
 
       <section className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">

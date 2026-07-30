@@ -6,6 +6,7 @@ import UsuarioEditModal from "../components/usuarios/UsuarioEditModal";
 import UsuariosDirectory from "../components/usuarios/UsuariosDirectory";
 import UsuariosHeader from "../components/usuarios/UsuariosHeader";
 import {
+  actualizarAlumno,
   actualizarContactoEmergencia,
   actualizarProcedenciaAcademica,
   actualizarSeguroMedico,
@@ -159,13 +160,44 @@ export default function UsuariosPage() {
     }
   };
 
+  const handleAbrirEdicion = async (usuario) => {
+    setMensaje("");
+    setError("");
+    setDetalleLoading(true);
+
+    try {
+      const detalle = await obtenerDetalleUsuario(usuario);
+      setUsuarioEditando({
+        ...detalle.usuario,
+        alumno: detalle.alumno,
+      });
+    } catch (requestError) {
+      console.error(requestError);
+      setError("No se pudo cargar el detalle del usuario.");
+    } finally {
+      setDetalleLoading(false);
+    }
+  };
+
   const handleEditarUsuario = async (formData) => {
     setMensaje("");
     setError("");
     setGuardando(true);
 
     try {
-      await actualizarUsuario(usuarioEditando.id_usuario, limpiarPayload(formData));
+      const { numero_control, ...usuarioPayload } = formData;
+
+      await actualizarUsuario(
+        usuarioEditando.id_usuario,
+        limpiarPayload(usuarioPayload),
+      );
+
+      if (usuarioEditando.alumno?.id_alumno) {
+        await actualizarAlumno(usuarioEditando.alumno.id_alumno, {
+          numero_control: numero_control?.trim() || null,
+        });
+      }
+
       setMensaje("Usuario actualizado correctamente.");
       setUsuarioEditando(null);
       await cargarUsuarios();
@@ -337,7 +369,7 @@ export default function UsuariosPage() {
         onBusquedaChange={setBusqueda}
         onRolFiltroChange={setRolFiltro}
         onVer={handleVerDetalle}
-        onEditar={setUsuarioEditando}
+        onEditar={handleAbrirEdicion}
         onEliminar={handleEliminarUsuario}
       />
 

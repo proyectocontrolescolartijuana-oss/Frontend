@@ -3,7 +3,7 @@ import { Search } from "lucide-react";
 const filtros = [
   { key: "TODOS", label: "Todos" },
   { key: "ACTIVOS", label: "Activos" },
-  { key: "FUTUROS", label: "Futuros" },
+  { key: "PENDIENTES", label: "Pendientes" },
   { key: "VENCIDOS", label: "Vencidos" },
 ];
 

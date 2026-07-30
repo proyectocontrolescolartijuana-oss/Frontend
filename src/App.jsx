@@ -19,6 +19,7 @@ import MainLayout from "./layouts/MainLayout";
 import ConstanciaTerminacion from "./pages/ConstanciaTerminacion";
 import ActaExamenExtraordinario from "./pages/ActaExamenExtraordinario";
 import ActaExamenTituloSuficiencia from "./pages/ActaExamenTituloSuficiencia";
+import ActaTitulacionLicenciatura from "./pages/ActaTitulacionLicenciatura";
 import BoletaFinal from "./pages/BoletaFinal";
 import ReciboDocumentosOriginales from "./pages/ReciboDocumentosOriginales";
 import RegistroReinscripcionAlumnos from "./pages/RegistroReinscripcionAlumnos";
@@ -27,6 +28,7 @@ import PromediosGrupo from "./pages/PromediosGrupos";
 import RezagoCarreras from "./pages/RezagoCarreras";
 import Kardex from "./pages/Kardex";
 import AlumnoPerfilPage from "./pages/AlumnoPerfilPage";
+import DocentePerfilPage from "./pages/DocentePerfilPage";
 import CalificacionesAlumnos from "./pages/CalificacionesAlumnos";
 import FormatoEvaluaciones from "./pages/FormatoEvaluaciones";
 import FormatoEvaluacionesExtraordinarias from "./pages/FormatoExtraordinario";
@@ -34,6 +36,7 @@ import FormatoTituloSuficiencia from "./pages/FormatoTituloSuficiencia";
 import CertificadoCalificaciones from "./pages/TodasLasMaterias";
 import SemaforoEgresados from "./pages/SemaforoEgresados";
 import ConcentradoCalificaciones from "./pages/ConcentradoCalificaciones";
+import TitulacionesPage from "./pages/TitulacionesPage";
 
 function App() {
   return (
@@ -229,6 +232,17 @@ function App() {
         />
 
         <Route
+          path="/acta-titulacion-licenciatura"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ActaTitulacionLicenciatura />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/recibo-documentos-originales"
           element={
             <ProtectedRoute>
@@ -295,6 +309,17 @@ function App() {
         />
 
         <Route
+          path="/docente/perfil"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <DocentePerfilPage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/alumno/perfil"
           element={
             <ProtectedRoute>
@@ -322,6 +347,28 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <DocumentosAlumnoPage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/titulaciones"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <TitulacionesPage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/titulaciones/:alumnoId"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <TitulacionesPage />
               </MainLayout>
             </ProtectedRoute>
           }

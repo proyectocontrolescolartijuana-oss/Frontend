@@ -5,9 +5,11 @@ import PeriodoListCard from "../components/periodos/PeriodoListCard";
 import PeriodoModal from "../components/periodos/PeriodoModal";
 import {
   actualizarPeriodo,
+  cerrarPeriodo,
   crearPeriodo,
   eliminarPeriodo,
   obtenerPeriodos,
+  previsualizarCierrePeriodo,
 } from "../services/periodosService";
 import { formatDateDDMMYYYY } from "../utils/fechas";
 
@@ -27,6 +29,10 @@ const getToday = () => {
 };
 
 const obtenerEtapaPeriodo = (periodo) => {
+  if (periodo.estado === "PENDIENTE") {
+    return { key: "PENDIENTES", label: "Pendiente" };
+  }
+
   if (periodo.estado === "CERRADO") {
     return { key: "VENCIDOS", label: "Cerrado" };
   }
@@ -58,6 +64,21 @@ const getErrorMessage = (error, fallback) => {
   }
 
   return fallback;
+};
+
+const resumenCierreTexto = (resumen) => {
+  if (!resumen) {
+    return "";
+  }
+
+  return [
+    `Periodo a activar: ${resumen.periodo_activado?.nombre || "ninguno"}`,
+    `Grupos que avanzan: ${resumen.grupos_avanzados || 0}`,
+    `Materias-grupo nuevas: ${resumen.materias_grupo_creadas || 0}`,
+    `Cargas nuevas: ${resumen.cargas_creadas || 0}`,
+    `Alumnos omitidos: ${resumen.alumnos_omitidos?.length || 0}`,
+    `Advertencias: ${resumen.advertencias?.length || 0}`,
+  ].join("\n");
 };
 
 export default function PeriodosPage() {
@@ -128,6 +149,7 @@ export default function PeriodosPage() {
     const base = {
       TODOS: periodosConEtapa.length,
       ACTIVOS: 0,
+      PENDIENTES: 0,
       FUTUROS: 0,
       VENCIDOS: 0,
     };
@@ -157,7 +179,15 @@ export default function PeriodosPage() {
     try {
       setError("");
       setMensaje("");
-      await crearPeriodo(formData);
+
+      const existeActivo = periodos.some(
+        (periodo) => periodo.estado === "ACTIVO",
+      );
+
+      await crearPeriodo({
+        ...formData,
+        estado: existeActivo ? "PENDIENTE" : "ACTIVO",
+      });
       await cargarPeriodos();
 
       return true;
@@ -178,19 +208,46 @@ export default function PeriodosPage() {
     try {
       setError("");
       setMensaje("");
-      const cerrarPeriodo =
+      const debeCerrarPeriodo =
         periodoEditando?.estado !== "CERRADO" && formData.estado === "CERRADO";
 
-      await actualizarPeriodo(periodoEditando.id_periodo, formData);
+      let cierreResponse = null;
+
+      if (debeCerrarPeriodo) {
+        const resumen = await previsualizarCierrePeriodo(
+          periodoEditando.id_periodo,
+        );
+        const confirmar = window.confirm(
+          `Confirmar cierre de ${periodoEditando.nombre}?\n\n${resumenCierreTexto(
+            resumen,
+          )}`,
+        );
+
+        if (!confirmar) {
+          return false;
+        }
+
+        cierreResponse = await cerrarPeriodo(periodoEditando.id_periodo);
+      } else {
+        await actualizarPeriodo(periodoEditando.id_periodo, formData);
+      }
 
       setModalAbierto(false);
       setPeriodoEditando(null);
 
       await cargarPeriodos();
 
-      if (cerrarPeriodo) {
+      if (debeCerrarPeriodo) {
+        const resumen = cierreResponse?.resumen;
+
         setMensaje(
-          "Periodo cerrado correctamente. Los grupos vinculados avanzaron al siguiente cuatrimestre.",
+          [
+            "Periodo cerrado correctamente.",
+            resumen?.periodo_activado
+              ? `${resumen.periodo_activado.nombre} quedo activo.`
+              : "No habia periodo pendiente para activar.",
+            `Se crearon ${resumen?.materias_grupo_creadas || 0} materias-grupo y ${resumen?.cargas_creadas || 0} cargas academicas.`,
+          ].join(" "),
         );
       }
 
@@ -241,6 +298,7 @@ export default function PeriodosPage() {
       <PeriodoHeader
         total={periodos.length}
         activos={conteos.ACTIVOS}
+        pendientes={conteos.PENDIENTES}
         futuros={conteos.FUTUROS}
         vencidos={conteos.VENCIDOS}
       />

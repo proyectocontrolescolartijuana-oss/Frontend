@@ -1,12 +1,26 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Download, FileText } from "lucide-react";
 import logoUnifront from "../assets/UnifrontLogoColorSinFondo.png";
+import { obtenerGrupos, obtenerPeriodos } from "../services/alumnosGruposService";
+import { obtenerCuatrimestres } from "../services/planesEstudioService";
+import { obtenerAlumnosDetalle } from "../services/usuariosService";
 import { formatDateDDMMYYYY } from "../utils/fechas";
 
+const DIRECCION_ESCUELA = "Blvd. Bernardo O'Higgins No. 6050, Los Alamos";
+
+const normalizar = (value = "") =>
+  value
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
 const initialForm = {
+  idAlumno: "",
   fecha: "",
   periodo: "",
-  direccionEscuela: "",
+  direccionEscuela: DIRECCION_ESCUELA,
   nombreAlumno: "",
   licenciatura: "",
   matricula: "",
@@ -23,6 +37,136 @@ const initialForm = {
 
 export default function ActaExamenTituloSuficiencia() {
   const [form, setForm] = useState(initialForm);
+  const [alumnos, setAlumnos] = useState([]);
+  const [grupos, setGrupos] = useState([]);
+  const [cuatrimestres, setCuatrimestres] = useState([]);
+  const [periodos, setPeriodos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busquedaAlumno, setBusquedaAlumno] = useState("");
+  const [mostrarOpciones, setMostrarOpciones] = useState(false);
+
+  useEffect(() => {
+    let activo = true;
+
+    const cargarDatos = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const [
+          alumnosResponse,
+          gruposResponse,
+          cuatrimestresResponse,
+          periodosResponse,
+        ] =
+          await Promise.all([
+            obtenerAlumnosDetalle(),
+            obtenerGrupos(),
+            obtenerCuatrimestres(),
+            obtenerPeriodos(),
+          ]);
+
+        if (!activo) return;
+
+        setAlumnos(alumnosResponse);
+        setGrupos(gruposResponse);
+        setCuatrimestres(cuatrimestresResponse);
+        setPeriodos(periodosResponse);
+      } catch (requestError) {
+        console.error(requestError);
+
+        if (activo) {
+          setError("No se pudo cargar la lista de alumnos.");
+        }
+      } finally {
+        if (activo) {
+          setLoading(false);
+        }
+      }
+    };
+
+    cargarDatos();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  const gruposPorId = useMemo(
+    () => new Map(grupos.map((grupo) => [Number(grupo.id_grupo), grupo])),
+    [grupos],
+  );
+
+  const cuatrimestresPorId = useMemo(
+    () =>
+      new Map(
+        cuatrimestres.map((cuatrimestre) => [
+          Number(cuatrimestre.id_cuatrimestre),
+          cuatrimestre,
+        ]),
+      ),
+    [cuatrimestres],
+  );
+
+  const alumnosDetalle = useMemo(() => {
+    return alumnos
+      .map((alumno) => {
+        const grupoCatalogo = gruposPorId.get(Number(alumno.grupo?.id_grupo));
+        const cuatrimestre = cuatrimestresPorId.get(
+          Number(grupoCatalogo?.id_cuatrimestre),
+        );
+
+        return {
+          ...alumno,
+          grupoCatalogo,
+          cuatrimestre,
+        };
+      })
+      .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
+  }, [alumnos, cuatrimestresPorId, gruposPorId]);
+
+  const alumnosFiltrados = useMemo(() => {
+    const texto = normalizar(busquedaAlumno);
+
+    if (!texto) return alumnosDetalle;
+
+    return alumnosDetalle.filter((alumno) => {
+      const datos = normalizar(
+        [alumno.nombre, alumno.matricula, alumno.numero_control]
+          .filter(Boolean)
+          .join(" "),
+      );
+
+      return datos.includes(texto);
+    });
+  }, [alumnosDetalle, busquedaAlumno]);
+
+  const periodoActivo = useMemo(() => {
+    return (
+      periodos.find((periodo) => periodo.estado === "ACTIVO") ||
+      periodos[0] ||
+      null
+    );
+  }, [periodos]);
+
+  const handleAlumnoChange = (idAlumno) => {
+    const alumno = alumnosDetalle.find(
+      (item) => Number(item.id_alumno) === Number(idAlumno),
+    );
+
+    setForm((currentForm) => ({
+      ...currentForm,
+      idAlumno,
+      periodo: periodoActivo?.nombre || "",
+      direccionEscuela: DIRECCION_ESCUELA,
+      nombreAlumno: alumno?.nombre || "",
+      licenciatura: alumno?.carrera?.nombre || "",
+      matricula: alumno?.matricula || "",
+      cuatrimestre: alumno?.cuatrimestre?.nombre || "",
+      grupo: alumno?.grupo?.nombre || alumno?.grupoCatalogo?.nombre || "",
+    }));
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -284,6 +428,71 @@ export default function ActaExamenTituloSuficiencia() {
           </h2>
 
           <div className="mt-5 space-y-4">
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                {error}
+              </div>
+            )}
+
+            <label className="relative block">
+              <span className="text-sm font-medium text-slate-700">
+                Alumno
+              </span>
+              <input
+                type="text"
+                value={
+                  mostrarOpciones
+                    ? busquedaAlumno
+                    : form.nombreAlumno || busquedaAlumno
+                }
+                onChange={(event) => {
+                  setBusquedaAlumno(event.target.value);
+                  setMostrarOpciones(true);
+                }}
+                onFocus={() => {
+                  setBusquedaAlumno("");
+                  setMostrarOpciones(true);
+                }}
+                onBlur={() => {
+                  setTimeout(() => setMostrarOpciones(false), 150);
+                }}
+                disabled={loading}
+                placeholder={
+                  loading
+                    ? "Cargando alumnos..."
+                    : "Busca por nombre o matricula"
+                }
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+              />
+
+              {mostrarOpciones && (
+                <div className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                  {alumnosFiltrados.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-slate-500">
+                      Sin resultados
+                    </div>
+                  )}
+
+                  {alumnosFiltrados.map((alumno) => (
+                    <button
+                      key={alumno.id_alumno}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        handleAlumnoChange(alumno.id_alumno);
+                        setBusquedaAlumno("");
+                        setMostrarOpciones(false);
+                      }}
+                      className="block w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
+                    >
+                      {alumno.nombre}
+                      {alumno.matricula ? ` - ${alumno.matricula}` : ""}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </label>
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {[
                 ["fecha", "Fecha"],

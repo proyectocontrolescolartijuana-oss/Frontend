@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   BadgeCheck,
-  GraduationCap,
+  BriefcaseBusiness,
   IdCard,
   KeyRound,
   LockKeyhole,
-  MapPin,
   UserRound,
-  Users,
 } from "lucide-react";
 import FormAlert from "../components/usuarios/FormAlert";
 import {
@@ -47,17 +45,13 @@ const getInitials = (usuario) => {
   return (first + second).toUpperCase() || "?";
 };
 
-const formatDate = (value) => {
-  return formatDateDDMMYYYY(value, emptyValue);
-};
+const formatDate = (value) => formatDateDDMMYYYY(value, emptyValue);
 
-const formatSex = (value) => {
-  const normalizedValue = value?.toUpperCase();
+const formatEstadoDocente = (value) => {
+  if (value === true) return "ACTIVO";
+  if (value === false) return "INACTIVO";
 
-  if (normalizedValue === "M") return "Masculino";
-  if (normalizedValue === "F") return "Femenino";
-
-  return value;
+  return emptyValue;
 };
 
 function ReadOnlyField({ label, value }) {
@@ -116,7 +110,7 @@ function PasswordInput({
   );
 }
 
-export default function AlumnoPerfilPage() {
+export default function DocentePerfilPage() {
   const [detalle, setDetalle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -156,8 +150,7 @@ export default function AlumnoPerfilPage() {
   }, []);
 
   const usuario = detalle?.usuario;
-  const alumno = detalle?.alumno;
-  const expediente = detalle?.expediente_alumno;
+  const docente = detalle?.docente;
 
   const nombreCompleto = useMemo(
     () => joinName(usuario) || usuario?.nombre || emptyValue,
@@ -171,6 +164,8 @@ export default function AlumnoPerfilPage() {
       ...prev,
       [name]: value,
     }));
+    setMensaje("");
+    setError("");
   };
 
   const handleSubmit = async (event) => {
@@ -223,14 +218,14 @@ export default function AlumnoPerfilPage() {
               <h1 className="text-4xl font-display text-[var(--primary)]">
                 Mi perfil
               </h1>
-              {/* <p className="mt-1 text-sm text-slate-500">{nombreCompleto}</p> */}
+              <p className="mt-1 text-sm text-slate-500">{nombreCompleto}</p>
             </div>
           </div>
 
-          {alumno?.estatus && (
+          {docente && (
             <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
               <BadgeCheck size={14} />
-              {alumno.estatus}
+              {formatEstadoDocente(docente.estado)}
             </span>
           )}
         </header>
@@ -249,111 +244,38 @@ export default function AlumnoPerfilPage() {
               </dl>
             </Section>
 
-            <Section icon={GraduationCap} title="Datos académicos">
+            <Section icon={BriefcaseBusiness} title="Datos docentes">
               <dl className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <ReadOnlyField label="Matricula" value={alumno?.matricula} />
                 <ReadOnlyField
-                  label="Número de control"
-                  value={alumno?.numero_control}
+                  label="Número de empleado"
+                  value={docente?.numero_empleado}
                 />
-                <ReadOnlyField label="Estatus" value={alumno?.estatus} />
                 <ReadOnlyField
-                  label="Carrera"
-                  value={alumno?.carrera?.nombre}
+                  label="Especialidad"
+                  value={docente?.especialidad}
                 />
-                <ReadOnlyField label="Plan" value={alumno?.plan?.nombre_plan} />
+                <ReadOnlyField
+                  label="Grado académico"
+                  value={docente?.grado_academico}
+                />
                 <ReadOnlyField
                   label="Fecha de ingreso"
-                  value={formatDate(alumno?.fecha_ingreso)}
+                  value={formatDate(docente?.fecha_ingreso)}
                 />
               </dl>
             </Section>
 
-            <Section icon={IdCard} title="Datos personales">
-              <dl className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <ReadOnlyField label="CURP" value={alumno?.curp} />
+            <Section icon={IdCard} title="Acceso">
+              <dl className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <ReadOnlyField label="Usuario" value={usuario?.correo} />
                 <ReadOnlyField
-                  label="Fecha de nacimiento"
-                  value={formatDate(alumno?.fecha_nacimiento)}
-                />
-                <ReadOnlyField label="Sexo" value={formatSex(alumno?.sexo)} />
-                <ReadOnlyField
-                  label="Nacionalidad"
-                  value={alumno?.nacionalidad}
-                />
-                <ReadOnlyField
-                  label="Ciudad de nacimiento"
-                  value={alumno?.ciudad_nacimiento}
-                />
-                <ReadOnlyField
-                  label="Municipio de nacimiento"
-                  value={alumno?.municipio_nacimiento}
-                />
-                <ReadOnlyField label="Dirección" value={alumno?.direccion} />
-                <ReadOnlyField label="Ciudad" value={alumno?.ciudad} />
-                <ReadOnlyField label="Estado" value={alumno?.estado} />
-                <ReadOnlyField
-                  label="Correo de contacto"
-                  value={alumno?.correo_contacto}
+                  label="Roles"
+                  value={usuario?.roles
+                    ?.map((role) => role.nombre)
+                    .filter(Boolean)
+                    .join(", ")}
                 />
               </dl>
-            </Section>
-
-            <Section icon={Users} title="Contacto y procedencia">
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="rounded-lg border border-slate-200 p-4">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <Users size={16} className="text-[#0B245B]" />
-                    Tutores
-                  </h3>
-                  <div className="mt-3 space-y-3">
-                    {expediente?.tutores?.length ? (
-                      expediente.tutores.map((tutor) => (
-                        <div
-                          className="border-t border-slate-100 pt-3 first:border-t-0 first:pt-0"
-                          key={tutor.id_tutor}
-                        >
-                          <p className="font-semibold text-slate-900">
-                            {tutor.nombre || emptyValue}
-                          </p>
-                          <p className="text-sm text-slate-500">
-                            {[tutor.parentesco, tutor.telefono]
-                              .filter(Boolean)
-                              .join(" - ") || emptyValue}
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-slate-500">{emptyValue}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-slate-200 p-4">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <MapPin size={16} className="text-[#0B245B]" />
-                    Procedencia académica
-                  </h3>
-                  <dl className="mt-3 space-y-3">
-                    <ReadOnlyField
-                      label="Escuela"
-                      value={
-                        expediente?.procedencia_academica?.escuela_procedencia
-                      }
-                    />
-                    <ReadOnlyField
-                      label="Nivel"
-                      value={expediente?.procedencia_academica?.nivel_academico}
-                    />
-                    <ReadOnlyField
-                      label="Promedio"
-                      value={
-                        expediente?.procedencia_academica?.promedio_general
-                      }
-                    />
-                  </dl>
-                </div>
-              </div>
             </Section>
           </div>
 

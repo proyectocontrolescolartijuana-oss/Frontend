@@ -25,12 +25,14 @@ export const obtenerPeriodos = async () => {
 };
 
 export const obtenerCatalogosCargaAcademica = async () => {
-  const [grupos, materias, docentes, periodos, planes] = await Promise.all([
+  const [grupos, materias, docentes, periodos, planes, carreras] =
+    await Promise.all([
     api.get("/grupos"),
     api.get("/materias"),
     api.get("/docentes"),
     api.get("/periodos"),
     api.get("/planes-estudio"),
+    api.get("/carreras"),
   ]);
 
   return {
@@ -39,6 +41,7 @@ export const obtenerCatalogosCargaAcademica = async () => {
     docentes: docentes.data,
     periodos: periodos.data,
     planes: planes.data,
+    carreras: carreras.data,
   };
 };
 
@@ -58,6 +61,12 @@ export const crearCargaAcademica = async (data) => {
 
 export const crearGrupoMateria = async (data) => {
   const response = await api.post("/grupos-materias", data);
+
+  return response.data;
+};
+
+export const actualizarGrupoMateria = async (idGrupoMateria, data) => {
+  const response = await api.patch(`/grupos-materias/${idGrupoMateria}`, data);
 
   return response.data;
 };

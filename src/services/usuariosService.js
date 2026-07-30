@@ -1,5 +1,7 @@
 import api from "./api";
 
+const CORREO_ALUMNO_DOMAIN = "unifront.com";
+
 export const ROLES_USUARIO = {
   ALUMNO: {
     id: 4,
@@ -60,10 +62,24 @@ export const crearAlumno = async (data) => {
   return response.data;
 };
 
+export const actualizarAlumno = async (idAlumno, data) => {
+  const response = await api.patch(`/alumnos/${idAlumno}`, data);
+
+  return response.data;
+};
+
 export const obtenerSiguienteMatriculaAlumno = async () => {
   const response = await api.get("/alumnos/siguiente-matricula");
 
   return response.data?.matricula || "";
+};
+
+export const crearCorreoInstitucionalAlumno = (matricula) => {
+  return `${String(matricula || "").trim()}@${CORREO_ALUMNO_DOMAIN}`;
+};
+
+const crearCorreoTemporalAlumno = () => {
+  return `alta-${crypto.randomUUID()}@${CORREO_ALUMNO_DOMAIN}`;
 };
 
 export const obtenerAlumnoDetalle = async (idAlumno) => {
@@ -160,20 +176,34 @@ export const crearUsuarioPorRol = async ({
   seguroMedico,
   procedenciaAcademica,
 }) => {
+  const correoUsuario =
+    rol === "ALUMNO" ? crearCorreoTemporalAlumno() : usuario.correo;
+
   const usuarioCreado = await crearUsuario({
     ...usuario,
+    correo: correoUsuario,
     roles: [],
   });
 
   const idRol = ROLES_USUARIO[rol].id;
+  let alumnoCreado = null;
+  let correoInstitucional = usuarioCreado.correo;
 
   try {
     await asignarRolUsuario(usuarioCreado.id_usuario, idRol);
 
     if (rol === "ALUMNO") {
-      const alumnoCreado = await crearAlumno({
+      alumnoCreado = await crearAlumno({
         ...alumno,
         id_usuario: usuarioCreado.id_usuario,
+      });
+
+      correoInstitucional = crearCorreoInstitucionalAlumno(
+        alumnoCreado.matricula,
+      );
+
+      await actualizarUsuario(usuarioCreado.id_usuario, {
+        correo: correoInstitucional,
       });
 
       if (tutor) {
@@ -214,7 +244,13 @@ export const crearUsuarioPorRol = async ({
       });
     }
 
-    return usuarioCreado;
+    return {
+      usuario: {
+        ...usuarioCreado,
+        correo: correoInstitucional,
+      },
+      alumno: alumnoCreado,
+    };
   } catch (error) {
     try {
       await quitarRolUsuario(usuarioCreado.id_usuario, idRol);

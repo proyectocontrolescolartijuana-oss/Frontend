@@ -3,6 +3,7 @@ import PeriodoFilters from "./PeriodoFilters";
 
 const badgeStyles = {
   ACTIVOS: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  PENDIENTES: "bg-amber-50 text-amber-700 ring-amber-200",
   FUTUROS: "bg-blue-50 text-blue-700 ring-blue-200",
   VENCIDOS: "bg-slate-100 text-slate-700 ring-slate-200",
 };
@@ -69,7 +70,11 @@ export default function PeriodoListCard({
                   </div>
 
                   <div className="mt-1 text-sm text-slate-500">
-                    {periodo.estado === "CERRADO" ? "Cerrado" : "Disponible"}
+                    {periodo.estado === "CERRADO"
+                      ? "Cerrado"
+                      : periodo.estado === "PENDIENTE"
+                        ? "Pendiente"
+                        : "Disponible"}
                   </div>
                 </td>
 

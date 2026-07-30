@@ -4,8 +4,9 @@ export const nombreApellidosPrimero = (persona, fallback = "") => {
   const partes = [
     persona.apellido_paterno,
     persona.apellido_materno,
+    persona.nombres,
     persona.nombre_alumno,
-    persona.nombre,
+    !persona.nombres && !persona.nombre_alumno ? persona.nombre : null,
   ].filter(Boolean);
 
   return partes.length ? partes.join(" ") : fallback;

@@ -18,6 +18,18 @@ export const actualizarPeriodo = async (id, data) => {
   return response.data;
 };
 
+export const previsualizarCierrePeriodo = async (id) => {
+  const response = await api.get(`/periodos/${id}/previsualizar-cierre`);
+
+  return response.data;
+};
+
+export const cerrarPeriodo = async (id) => {
+  const response = await api.post(`/periodos/${id}/cerrar`);
+
+  return response.data;
+};
+
 export const eliminarPeriodo = async (id) => {
   const response = await api.delete(`/periodos/${id}`);
 

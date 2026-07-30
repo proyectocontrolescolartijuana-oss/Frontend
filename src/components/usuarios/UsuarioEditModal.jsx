@@ -10,8 +10,16 @@ const getInitialForm = (usuario) => ({
   apellido_materno: usuario?.apellido_materno || "",
   correo: usuario?.correo || "",
   telefono: usuario?.telefono || "",
+  numero_control: usuario?.alumno?.numero_control || "",
   password: "",
 });
+
+const usuarioEsAlumno = (usuario) => {
+  return (
+    Boolean(usuario?.alumno) ||
+    usuario?.roles?.some((role) => role.nombre === "ALUMNO")
+  );
+};
 
 export default function UsuarioEditModal({
   usuario,
@@ -22,6 +30,8 @@ export default function UsuarioEditModal({
   const [form, setForm] = useState(() => getInitialForm(usuario));
 
   if (!usuario) return null;
+
+  const esAlumno = usuarioEsAlumno(usuario);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -125,6 +135,21 @@ export default function UsuarioEditModal({
               required
             />
           </Field>
+
+          {esAlumno && (
+            <Field label="Número de control">
+              <input
+                className={inputClass}
+                name="numero_control"
+                value={form.numero_control}
+                onChange={handleChange}
+                disabled={!usuario.alumno}
+                placeholder={
+                  usuario.alumno ? "Ej. 260001" : "Sin expediente de alumno"
+                }
+              />
+            </Field>
+          )}
 
           <Field label="Nueva contraseña">
             <input
