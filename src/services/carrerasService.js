@@ -1,21 +1,32 @@
 import api from "./api";
 
+const construirUrlApi = (ruta) => {
+  if (!ruta || !ruta.startsWith("/")) return ruta;
+
+  return new URL(ruta, api.defaults.baseURL).toString();
+};
+
+const normalizarCarrera = (carrera) => ({
+  ...carrera,
+  logo: construirUrlApi(carrera.logo),
+});
+
 export const obtenerCarreras = async () => {
   const response = await api.get("/carreras");
 
-  return response.data;
+  return response.data.map(normalizarCarrera);
 };
 
 export const crearCarrera = async (data) => {
   const response = await api.post("/carreras", data);
 
-  return response.data;
+  return normalizarCarrera(response.data);
 };
 
 export const actualizarCarrera = async (id, data) => {
   const response = await api.patch(`/carreras/${id}`, data);
 
-  return response.data;
+  return normalizarCarrera(response.data);
 };
 
 export const eliminarCarrera = async (id) => {
@@ -34,5 +45,8 @@ export const subirLogoCarrera = async (archivo) => {
     },
   });
 
-  return response.data;
+  return {
+    ...response.data,
+    url: construirUrlApi(response.data.url),
+  };
 };
