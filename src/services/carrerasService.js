@@ -23,3 +23,16 @@ export const eliminarCarrera = async (id) => {
 
   return response.data;
 };
+
+export const subirLogoCarrera = async (archivo) => {
+  const formData = new FormData();
+  formData.append("archivo", archivo);
+
+  const response = await api.post("/carreras/logos", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return response.data;
+};

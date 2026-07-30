@@ -17,6 +17,7 @@ import {
   FileSpreadsheet,
   KeyRound,
   ListChecks,
+  Replace,
   TrafficCone,
 } from "lucide-react";
 
@@ -92,6 +93,12 @@ export const sidebarSections = [
         icon: Users,
         label: "Kardex",
         path: "/kardex",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+      {
+        icon: Replace,
+        label: "Equivalencias",
+        path: "/equivalencias",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
       {
@@ -189,8 +196,14 @@ export const sidebarSections = [
       },
       {
         icon: TrafficCone,
-        label: "Semaforo egresados",
+        label: "Semaforo de titulación",
         path: "/semaforo-egresados",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+       {
+        icon: TrafficCone,
+        label: "Estatus de Egresados",
+        path: "/estatus-egresados",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
     ],
@@ -220,6 +233,12 @@ export const sidebarSections = [
         icon: BookOpen,
         label: "Mi kardex",
         path: "/alumno/kardex",
+        roles: ["ALUMNO"],
+      },
+      {
+        icon: TrafficCone,
+        label: "Mi semaforo",
+        path: "/alumno/semaforo-egresado",
         roles: ["ALUMNO"],
       },
     ],

@@ -49,10 +49,67 @@ const tieneValores = (payload) => {
   );
 };
 
-const obtenerPeriodoActivoId = (periodos = []) => {
+const parseFechaLocal = (fecha) => {
+  if (!fecha) {
+    return null;
+  }
+
+  const [year, month, day] = String(fecha).split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  return new Date(year, month - 1, day);
+};
+
+const ordenarPorFechaInicio = (periodos = []) => {
+  return [...periodos].sort((a, b) => {
+    const fechaA = parseFechaLocal(a.fecha_inicio)?.getTime() || 0;
+    const fechaB = parseFechaLocal(b.fecha_inicio)?.getTime() || 0;
+
+    if (fechaA !== fechaB) {
+      return fechaA - fechaB;
+    }
+
+    return Number(a.id_periodo) - Number(b.id_periodo);
+  });
+};
+
+const obtenerPeriodosAltaAlumno = (periodos = []) => {
+  const activos = ordenarPorFechaInicio(
+    periodos.filter((periodo) => periodo.estado === "ACTIVO"),
+  );
+  const pendientes = periodos.filter(
+    (periodo) => periodo.estado === "PENDIENTE",
+  );
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const pendientesFuturos = pendientes.filter((periodo) => {
+    if (!periodo.fecha_inicio) {
+      return false;
+    }
+
+    const fechaInicio = parseFechaLocal(periodo.fecha_inicio);
+
+    return fechaInicio && fechaInicio >= hoy;
+  });
+
+  const pendienteCercano = ordenarPorFechaInicio(
+    pendientesFuturos.length > 0 ? pendientesFuturos : pendientes,
+  )[0];
+
+  return [...activos, pendienteCercano].filter(Boolean);
+};
+
+const obtenerPeriodoAltaDefaultId = (periodos = []) => {
+  const disponibles = obtenerPeriodosAltaAlumno(periodos);
+
   return (
-    periodos.find((periodo) => periodo.estado === "ACTIVO")?.id_periodo ||
-    periodos[0]?.id_periodo ||
+    disponibles.find((periodo) => periodo.estado === "ACTIVO")?.id_periodo ||
+    disponibles[0]?.id_periodo ||
     ""
   );
 };
@@ -103,7 +160,7 @@ export default function UsuariosAltaPage() {
           setAlumnoForm((prev) => ({
             ...prev,
             id_periodo:
-              prev.id_periodo || obtenerPeriodoActivoId(periodosResponse),
+              prev.id_periodo || obtenerPeriodoAltaDefaultId(periodosResponse),
           }));
         }
       },
@@ -137,20 +194,35 @@ export default function UsuariosAltaPage() {
   }, [planes, alumnoForm.id_carrera]);
 
   const gruposDisponibles = useMemo(() => {
+    const gruposActivos = grupos.filter(
+      (grupo) => (grupo.estatus || "ACTIVO") === "ACTIVO",
+    );
+
     if (!alumnoForm.id_carrera) {
-      return grupos;
+      return gruposActivos;
     }
 
-    return grupos.filter(
-      (grupo) => grupo.id_carrera === Number(alumnoForm.id_carrera),
-    );
-  }, [grupos, alumnoForm.id_carrera]);
+    return gruposActivos.filter((grupo) => {
+      const coincideCarrera =
+        grupo.id_carrera === Number(alumnoForm.id_carrera);
+      const coincidePlan =
+        !alumnoForm.id_plan ||
+        !grupo.id_plan ||
+        grupo.id_plan === Number(alumnoForm.id_plan);
+
+      return coincideCarrera && coincidePlan;
+    });
+  }, [grupos, alumnoForm.id_carrera, alumnoForm.id_plan]);
+
+  const periodosDisponiblesAlumno = useMemo(() => {
+    return obtenerPeriodosAltaAlumno(periodos);
+  }, [periodos]);
 
   const resetForm = () => {
     setUsuarioForm(usuarioInicial);
     setAlumnoForm({
       ...alumnoInicial,
-      id_periodo: obtenerPeriodoActivoId(periodos),
+      id_periodo: obtenerPeriodoAltaDefaultId(periodos),
     });
     setDocenteForm(docenteInicial);
     setTutorForm(tutorInicial);
@@ -178,6 +250,7 @@ export default function UsuariosAltaPage() {
       ...prev,
       [name]: value,
       ...(name === "id_carrera" ? { id_plan: "", id_grupo: "" } : {}),
+      ...(name === "id_plan" ? { id_grupo: "" } : {}),
     }));
   };
 
@@ -423,7 +496,7 @@ export default function UsuariosAltaPage() {
           carreras={carreras}
           planesDisponibles={planesDisponibles}
           gruposDisponibles={gruposDisponibles}
-          periodos={periodos}
+          periodos={periodosDisponiblesAlumno}
           mensaje=""
           error=""
           guardando={guardando}

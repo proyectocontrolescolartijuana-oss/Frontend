@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Pencil, X } from "lucide-react";
+import { Image, Plus, Pencil, Upload, X } from "lucide-react";
 
 const getInitialForm = (carrera) => ({
   clave: carrera?.clave || "",
@@ -9,6 +9,8 @@ const getInitialForm = (carrera) => ({
   duracion_cuatrimestres: carrera?.duracion_cuatrimestres || 9,
   fecha_autorizacion: carrera?.fecha_autorizacion || "",
   estado: carrera?.estado ?? true,
+  logoFile: null,
+  logoPreview: carrera?.logo || "",
 });
 
 export default function CarreraForm({
@@ -30,10 +32,39 @@ export default function CarreraForm({
     }));
   };
 
+  const handleLogoChange = (e) => {
+    const archivo = e.target.files?.[0] || null;
+
+    if (!archivo) return;
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      setForm((prev) => ({
+        ...prev,
+        logoFile: archivo,
+        logoPreview: reader.result || "",
+      }));
+    };
+
+    reader.readAsDataURL(archivo);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    await onSubmit(form);
+    const payload = {
+      clave: form.clave,
+      rvoe: form.rvoe,
+      nombre: form.nombre,
+      nivel: form.nivel,
+      duracion_cuatrimestres: form.duracion_cuatrimestres,
+      fecha_autorizacion: form.fecha_autorizacion,
+      estado: form.estado,
+      logoFile: form.logoFile,
+    };
+
+    await onSubmit(payload);
 
     if (!isEditing) {
       setForm(getInitialForm());
@@ -97,7 +128,7 @@ export default function CarreraForm({
             name="rvoe"
             value={form.rvoe}
             onChange={handleChange}
-            placeholder="Ej. RVOE-BC-053-M2/14"
+            placeholder="Ej. BC-053-M2/14"
             className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
             required
           />
@@ -113,10 +144,47 @@ export default function CarreraForm({
             name="nombre"
             value={form.nombre}
             onChange={handleChange}
-            placeholder="Ej. Ingeniería en Sistemas"
+            placeholder="Ej. Licenciatura en Nutrición"
             className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
             required
           />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Logo de la carrera
+          </label>
+
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 p-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                {form.logoPreview ? (
+                  <img
+                    src={form.logoPreview}
+                    alt="Logo de la carrera"
+                    className="h-full w-full object-contain p-2"
+                  />
+                ) : (
+                  <Image size={28} className="text-slate-400" />
+                )}
+              </div>
+
+              <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 font-medium text-slate-700 transition hover:bg-slate-100">
+                <Upload size={18} />
+                Subir logo
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  onChange={handleLogoChange}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {form.logoFile && (
+              <p className="text-sm text-slate-500">{form.logoFile.name}</p>
+            )}
+          </div>
         </div>
 
         <div>

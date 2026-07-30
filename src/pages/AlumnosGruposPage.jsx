@@ -26,6 +26,7 @@ import {
   nombreAlumnoApellidosPrimero,
   nombreApellidosPrimero,
 } from "../utils/nombres";
+import { obtenerHistorialesAcademicos } from "../services/equivalenciasService";
 
 const obtenerFechaActual = () => new Date().toISOString().slice(0, 10);
 
@@ -73,7 +74,10 @@ const getGrupoMeta = (grupoMateria) => {
 };
 
 const esGrupoMateriaActivo = (grupoMateria) => {
-  return grupoMateria?.periodo?.estado === "ACTIVO";
+  return (
+    grupoMateria?.periodo?.estado === "ACTIVO" &&
+    (grupoMateria?.grupo?.estatus || "ACTIVO") === "ACTIVO"
+  );
 };
 
 const getAlumnoTexto = (alumno) => {
@@ -110,6 +114,8 @@ export default function AlumnosGruposPage() {
   const [planes, setPlanes] = useState([]);
   const [carreras, setCarreras] = useState([]);
   const [cargas, setCargas] = useState([]);
+  const [historialesMateriaAprobados, setHistorialesMateriaAprobados] =
+    useState([]);
   const [grupoSeleccionadoId, setGrupoSeleccionadoId] = useState("");
   const [busquedaGrupo, setBusquedaGrupo] = useState("");
   const [carreraFiltro, setCarreraFiltro] = useState("TODAS");
@@ -235,6 +241,7 @@ export default function AlumnosGruposPage() {
   const cargarCargas = async (grupoMateriaId = grupoSeleccionadoId) => {
     if (!grupoMateriaId) {
       setCargas([]);
+      setHistorialesMateriaAprobados([]);
       return;
     }
 
@@ -245,13 +252,49 @@ export default function AlumnosGruposPage() {
       const response = await obtenerCargasAcademicas({
         grupo_materia_id: grupoMateriaId,
       });
+      const grupoMateria = gruposMaterias.find(
+        (item) =>
+          String(item.id_grupo_materia) === String(grupoMateriaId),
+      );
 
       setCargas(response);
+      await cargarHistorialesMateriaAprobados(grupoMateria);
     } catch (requestError) {
       console.error(requestError);
       setError(obtenerMensajeError(requestError));
     } finally {
       setLoadingCargas(false);
+    }
+  };
+
+  const cargarHistorialesMateriaAprobados = async (grupoMateria) => {
+    const idMateria = grupoMateria?.materia?.id_materia;
+
+    if (!idMateria) {
+      setHistorialesMateriaAprobados([]);
+      return;
+    }
+
+    try {
+      const response = await obtenerHistorialesAcademicos({
+        materia_id: idMateria,
+        resultado: "APROBADO",
+      });
+      const cargasAprobadas = await obtenerCargasAcademicas({
+        materia_id: idMateria,
+        estatus: "APROBADA",
+      });
+      const historialesPorCarga = cargasAprobadas.map((carga) => ({
+        alumno: carga.alumno,
+      }));
+
+      setHistorialesMateriaAprobados([
+        ...response,
+        ...historialesPorCarga,
+      ]);
+    } catch (requestError) {
+      console.error(requestError);
+      setError(obtenerMensajeError(requestError));
     }
   };
 
@@ -298,32 +341,40 @@ export default function AlumnosGruposPage() {
     }
 
     let activo = true;
+    const grupoMateriaActual = gruposMaterias.find(
+      (item) =>
+        String(item.id_grupo_materia) === String(grupoSeleccionadoId),
+    );
 
-    obtenerCargasAcademicas({
-      grupo_materia_id: grupoSeleccionadoId,
-    })
-      .then((response) => {
-        if (activo) {
-          setCargas(response);
-        }
-      })
-      .catch((requestError) => {
+    const cargarDatosGrupo = async () => {
+      try {
+        const response = await obtenerCargasAcademicas({
+          grupo_materia_id: grupoSeleccionadoId,
+        });
+
+        if (!activo) return;
+
+        setCargas(response);
+        await cargarHistorialesMateriaAprobados(grupoMateriaActual);
+      } catch (requestError) {
         console.error(requestError);
 
         if (activo) {
           setError(obtenerMensajeError(requestError));
         }
-      })
-      .finally(() => {
+      } finally {
         if (activo) {
           setLoadingCargas(false);
         }
-      });
+      }
+    };
+
+    cargarDatosGrupo();
 
     return () => {
       activo = false;
     };
-  }, [grupoSeleccionadoId]);
+  }, [grupoSeleccionadoId, gruposMaterias]);
 
   useEffect(() => {
     setAsignacionForm({
@@ -381,9 +432,14 @@ export default function AlumnosGruposPage() {
 
   const gruposDisponiblesOferta = useMemo(() => {
     return grupos.filter((grupo) => {
+      const estaActivo = (grupo.estatus || "ACTIVO") === "ACTIVO";
+
       return (
-        carreraOfertaId === null ||
-        String(grupo.id_carrera) === String(carreraOfertaId)
+        estaActivo &&
+        (
+          carreraOfertaId === null ||
+          String(grupo.id_carrera) === String(carreraOfertaId)
+        )
       );
     });
   }, [grupos, carreraOfertaId]);
@@ -465,6 +521,14 @@ export default function AlumnosGruposPage() {
     );
   }, [cargas]);
 
+  const alumnosConMateriaAprobadaIds = useMemo(() => {
+    return new Set(
+      historialesMateriaAprobados
+        .map((historial) => historial.alumno?.id_alumno)
+        .filter((idAlumno) => idAlumno !== undefined && idAlumno !== null),
+    );
+  }, [historialesMateriaAprobados]);
+
   const carreraGrupoSeleccionadoId = useMemo(() => {
     const carreraId = grupoSeleccionado?.grupo?.id_carrera;
 
@@ -484,8 +548,9 @@ export default function AlumnosGruposPage() {
     const busqueda = normalizarTexto(busquedaAlumno.trim());
 
     return alumnos
-      .filter((alumno) => alumno.estatus !== "BAJA")
+      .filter((alumno) => alumno.estatus === "ACTIVO")
       .filter((alumno) => !alumnosInscritosIds.has(alumno.id_alumno))
+      .filter((alumno) => !alumnosConMateriaAprobadaIds.has(alumno.id_alumno))
       .filter(
         (alumno) =>
           carreraGrupoSeleccionadoId === null ||
@@ -501,7 +566,13 @@ export default function AlumnosGruposPage() {
           nombreAlumnoApellidosPrimero(b, ""),
         ),
       );
-  }, [alumnos, alumnosInscritosIds, busquedaAlumno, carreraGrupoSeleccionadoId]);
+  }, [
+    alumnos,
+    alumnosConMateriaAprobadaIds,
+    alumnosInscritosIds,
+    busquedaAlumno,
+    carreraGrupoSeleccionadoId,
+  ]);
 
   const cargasOrdenadas = useMemo(() => {
     return [...cargas].sort((a, b) =>

@@ -1,4 +1,4 @@
-export default function GrupoHeader({ total, matutinos, vespertinos }) {
+export default function GrupoHeader({ total, matutinos, vespertinos, cerrados = 0 }) {
   const resumen = [
     {
       label: "Matutinos",
@@ -9,6 +9,11 @@ export default function GrupoHeader({ total, matutinos, vespertinos }) {
       label: "Vespertinos",
       value: vespertinos,
       className: "bg-indigo-50 text-indigo-700",
+    },
+    {
+      label: "Cerrados",
+      value: cerrados,
+      className: "bg-slate-100 text-slate-700",
     },
   ];
 

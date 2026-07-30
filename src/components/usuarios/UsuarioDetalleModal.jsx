@@ -28,6 +28,29 @@ function DetailItem({ label, value }) {
   );
 }
 
+const estatusAlumnoStyles = {
+  ACTIVO: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  EGRESADO: "bg-blue-50 text-blue-700 ring-blue-200",
+  TITULADO: "bg-indigo-50 text-indigo-700 ring-indigo-200",
+  BAJA: "bg-red-50 text-red-700 ring-red-200",
+};
+
+function StatusBadge({ value }) {
+  if (!value) {
+    return emptyValue;
+  }
+
+  return (
+    <span
+      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
+        estatusAlumnoStyles[value] || "bg-slate-100 text-slate-700 ring-slate-200"
+      }`}
+    >
+      {value}
+    </span>
+  );
+}
+
 function Section({ title, children }) {
   return (
     <section className="space-y-4 border-t border-slate-200 px-6 py-5">
@@ -321,7 +344,7 @@ export default function UsuarioDetalleModal({
             />
             <DetailItem label="Correo" value={usuario.correo} />
             <DetailItem label="Teléfono" value={usuario.telefono} />
-            <DetailItem label="Estado" value={usuario.estado} />
+            <DetailItem label="Estado de cuenta" value={usuario.estado} />
           </dl>
         </Section>
 
@@ -333,7 +356,10 @@ export default function UsuarioDetalleModal({
                 label="Número de control"
                 value={alumno.numero_control}
               />
-              <DetailItem label="Estatus" value={alumno.estatus} />
+              <DetailItem
+                label="Estatus academico"
+                value={<StatusBadge value={alumno.estatus} />}
+              />
               <DetailItem label="Carrera" value={alumno.carrera?.nombre} />
               <DetailItem label="Plan" value={alumno.plan?.nombre_plan} />
               <DetailItem label="CURP" value={alumno.curp} />

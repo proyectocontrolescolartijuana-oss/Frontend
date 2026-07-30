@@ -101,7 +101,7 @@ export default function UsuariosDirectory({
                     </div>
 
                     <div className="mt-1 text-sm text-slate-500">
-                      ID #{usuario.id_usuario}
+                      Usuario #{usuario.id_usuario}
                     </div>
                   </td>
 

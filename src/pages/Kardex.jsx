@@ -810,7 +810,7 @@ const Kardex = ({ modoAlumno = false }) => {
                           <td className="kd-tr">{m.creditos}</td>
                           <td className="kd-ta">{m.asignatura}</td>
                           <td className="kd-tq">{m.calificacion_final}</td>
-                          <td className="kd-tr"></td>
+                          <td className="kd-tr">{m.tipo_acreditacion || "OR"}</td>
                           <td className="kd-tr"></td>
                           <td className="kd-tr"></td>
                           <td className="kd-tr"></td>

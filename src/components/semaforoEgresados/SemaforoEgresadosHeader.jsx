@@ -1,6 +1,12 @@
 import { Download, FileText } from "lucide-react";
 
-export default function SemaforoEgresadosHeader({ disabled, onDownload }) {
+export default function SemaforoEgresadosHeader({
+  disabled,
+  hideDownload = false,
+  onDownload,
+  subtitle = "Selecciona carrera y grupo para consultar el avance de egresados.",
+  title = "Semaforo de Calificaciones",
+}) {
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
       <div className="flex items-center gap-3">
@@ -10,23 +16,23 @@ export default function SemaforoEgresadosHeader({ disabled, onDownload }) {
 
         <div>
           <h1 className="text-4xl font-bold text-slate-900">
-            Semaforo de Calificaciones
+            Semaforo de titulación
           </h1>
 
-          <p className="mt-1 text-slate-500">
-            Selecciona carrera y grupo para consultar el avance de egresados.
-          </p>
+          <p className="mt-1 text-slate-500">{subtitle}</p>
         </div>
       </div>
 
-      <button
-        onClick={onDownload}
-        disabled={disabled}
-        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <Download size={18} />
-        Descargar PDF
-      </button>
+      {!hideDownload && (
+        <button
+          onClick={onDownload}
+          disabled={disabled}
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Download size={18} />
+          Descargar PDF
+        </button>
+      )}
     </div>
   );
 }

@@ -7,6 +7,11 @@ const turnoStyles = {
   VESPERTINO: "bg-indigo-50 text-indigo-700 ring-indigo-200",
 };
 
+const estatusStyles = {
+  ACTIVO: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  CERRADO: "bg-slate-100 text-slate-700 ring-slate-200",
+};
+
 export default function GrupoListCard({
   grupos,
   carreras,
@@ -64,6 +69,10 @@ export default function GrupoListCard({
                   Turno
                 </th>
 
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">
+                  Estatus
+                </th>
+
                 <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">
                   Acciones
                 </th>
@@ -101,6 +110,17 @@ export default function GrupoListCard({
                       }`}
                     >
                       {grupo.turno || "Sin turno"}
+                    </span>
+                  </td>
+
+                  <td className="px-6 py-5">
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
+                        estatusStyles[grupo.estatus || "ACTIVO"] ||
+                        "bg-slate-100 text-slate-700 ring-slate-200"
+                      }`}
+                    >
+                      {grupo.estatus || "ACTIVO"}
                     </span>
                   </td>
 

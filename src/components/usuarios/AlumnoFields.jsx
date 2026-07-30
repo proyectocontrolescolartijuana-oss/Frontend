@@ -86,7 +86,7 @@ export default function AlumnoFields({
           </select>
         </Field>
 
-        <Field label="Periodo" required>
+        <Field label="Periodo de ingreso" required>
           <select
             className={inputClass}
             name="id_periodo"
@@ -94,12 +94,17 @@ export default function AlumnoFields({
             onChange={onChange}
             required
           >
-            <option value="">Selecciona periodo</option>
+            <option value="">
+              {periodos.length > 0
+                ? "Selecciona periodo"
+                : "No hay periodos disponibles para alta"}
+            </option>
             {periodos.map((periodo) => (
               <option key={periodo.id_periodo} value={periodo.id_periodo}>
                 {[
                   periodo.nombre || `Periodo ${periodo.id_periodo}`,
-                  periodo.estado === "ACTIVO" ? "ACTIVO" : null,
+                  periodo.estado === "ACTIVO" ? "Actual" : null,
+                  periodo.estado === "PENDIENTE" ? "Siguiente" : null,
                 ]
                   .filter(Boolean)
                   .join(" - ")}

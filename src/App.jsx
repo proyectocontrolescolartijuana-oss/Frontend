@@ -37,6 +37,9 @@ import CertificadoCalificaciones from "./pages/TodasLasMaterias";
 import SemaforoEgresados from "./pages/SemaforoEgresados";
 import ConcentradoCalificaciones from "./pages/ConcentradoCalificaciones";
 import TitulacionesPage from "./pages/TitulacionesPage";
+import EquivalenciasPage from "./pages/EquivalenciasPage";
+import MiSemaforoEgresados from "./pages/MiSemaforoEgresados";
+import EstatusEgresados from "./pages/EstatusEgresados";
 
 function App() {
   return (
@@ -411,11 +414,33 @@ function App() {
         />
 
         <Route
+          path="/equivalencias"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <EquivalenciasPage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/alumno/kardex"
           element={
             <ProtectedRoute>
               <MainLayout>
                 <Kardex modoAlumno />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/alumno/semaforo-egresado"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <MiSemaforoEgresados />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -482,6 +507,18 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <SemaforoEgresados />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/*Estatus egresados*/}
+        <Route
+          path="/estatus-egresados"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <EstatusEgresados />
               </MainLayout>
             </ProtectedRoute>
           }

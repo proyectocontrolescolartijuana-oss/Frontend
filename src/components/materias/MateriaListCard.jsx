@@ -1,4 +1,4 @@
-import { Trash2, Edit2 } from "lucide-react";
+import { BookOpen, Trash2, Edit2 } from "lucide-react";
 import MateriaFilters from "./MateriaFilters";
 
 export default function MateriaListCard({
@@ -10,6 +10,7 @@ export default function MateriaListCard({
   setCarreraFiltro,
   onEditar,
   onEliminar,
+  onPrerrequisitos,
 }) {
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -70,7 +71,18 @@ export default function MateriaListCard({
               <td className="px-6 py-5">
                 <div className="flex justify-end gap-3">
                   <button
+                    onClick={() => onPrerrequisitos(materia)}
+                    aria-label="Administrar prerrequisitos"
+                    title="Prerrequisitos"
+                    className="text-emerald-600 transition hover:text-emerald-700"
+                  >
+                    <BookOpen size={18} />
+                  </button>
+
+                  <button
                     onClick={() => onEditar(materia)}
+                    aria-label="Editar materia"
+                    title="Editar materia"
                     className="text-blue-500 transition hover:text-blue-700"
                   >
                     <Edit2 size={18} />
@@ -78,6 +90,8 @@ export default function MateriaListCard({
 
                   <button
                     onClick={() => onEliminar(materia)}
+                    aria-label="Eliminar materia"
+                    title="Eliminar materia"
                     className="text-red-500 transition hover:text-red-700"
                   >
                     <Trash2 size={18} />

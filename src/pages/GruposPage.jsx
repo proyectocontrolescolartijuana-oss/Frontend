@@ -137,6 +137,13 @@ export default function GruposPage() {
         };
       })
       .sort((a, b) => {
+        const aCerrado = a.estatus === "CERRADO";
+        const bCerrado = b.estatus === "CERRADO";
+
+        if (aCerrado !== bCerrado) {
+          return aCerrado ? 1 : -1;
+        }
+
         const carreraCompare = a.carreraNombre.localeCompare(b.carreraNombre);
 
         if (carreraCompare !== 0) return carreraCompare;
@@ -195,8 +202,10 @@ export default function GruposPage() {
       (conteos, grupo) => ({
         ...conteos,
         [grupo.turno]: (conteos[grupo.turno] ?? 0) + 1,
+        CERRADO:
+          grupo.estatus === "CERRADO" ? conteos.CERRADO + 1 : conteos.CERRADO,
       }),
-      { MATUTINO: 0, VESPERTINO: 0 },
+      { MATUTINO: 0, VESPERTINO: 0, CERRADO: 0 },
     );
   }, [grupos]);
 
@@ -290,6 +299,7 @@ export default function GruposPage() {
         total={grupos.length}
         matutinos={conteosHeader.MATUTINO}
         vespertinos={conteosHeader.VESPERTINO}
+        cerrados={conteosHeader.CERRADO}
       />
 
       {error && (

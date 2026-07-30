@@ -3,12 +3,17 @@ import MateriaHeader from "../components/materias/MateriaHeader";
 import MateriaForm from "../components/materias/MateriaForm";
 import MateriaListCard from "../components/materias/MateriaListCard";
 import MateriaModal from "../components/materias/MateriaModal";
+import MateriaPrerrequisitosModal from "../components/materias/MateriaPrerrequisitosModal";
 
 import {
   obtenerMaterias,
   crearMateria,
   eliminarMateria,
   actualizarMateria,
+  crearPrerrequisitoMateria,
+  actualizarPrerrequisitoMateria,
+  eliminarPrerrequisitoMateria,
+  obtenerPrerrequisitosMateria,
 } from "../services/materiasService";
 
 import { obtenerCarreras } from "../services/carrerasService";
@@ -25,6 +30,13 @@ export default function MateriasPage() {
   const [carreraFiltro, setCarreraFiltro] = useState("TODAS");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [materiaEditando, setMateriaEditando] = useState(null);
+  const [modalPrerrequisitosAbierto, setModalPrerrequisitosAbierto] =
+    useState(false);
+  const [materiaPrerrequisitos, setMateriaPrerrequisitos] = useState(null);
+  const [prerrequisitos, setPrerrequisitos] = useState([]);
+  const [loadingPrerrequisitos, setLoadingPrerrequisitos] = useState(false);
+  const [guardandoPrerrequisito, setGuardandoPrerrequisito] = useState(false);
+  const [errorPrerrequisitos, setErrorPrerrequisitos] = useState("");
 
   async function cargarDatos() {
     try {
@@ -138,6 +150,117 @@ export default function MateriasPage() {
     }
   };
 
+  const cargarPrerrequisitos = async (materiaId) => {
+    setLoadingPrerrequisitos(true);
+    setErrorPrerrequisitos("");
+
+    try {
+      const response = await obtenerPrerrequisitosMateria(materiaId);
+      setPrerrequisitos(response);
+    } catch (error) {
+      console.error(error);
+      setErrorPrerrequisitos(
+        error.response?.data?.detail ||
+          "No se pudieron cargar los prerrequisitos",
+      );
+    } finally {
+      setLoadingPrerrequisitos(false);
+    }
+  };
+
+  const handleAbrirPrerrequisitos = async (materia) => {
+    setMateriaPrerrequisitos(materia);
+    setModalPrerrequisitosAbierto(true);
+    setPrerrequisitos([]);
+
+    await cargarPrerrequisitos(materia.id_materia);
+  };
+
+  const handleCerrarPrerrequisitos = () => {
+    setModalPrerrequisitosAbierto(false);
+    setMateriaPrerrequisitos(null);
+    setPrerrequisitos([]);
+    setErrorPrerrequisitos("");
+  };
+
+  const handleCrearPrerrequisito = async (formData) => {
+    if (!materiaPrerrequisitos) return;
+
+    setGuardandoPrerrequisito(true);
+    setErrorPrerrequisitos("");
+
+    try {
+      await crearPrerrequisitoMateria(
+        materiaPrerrequisitos.id_materia,
+        formData,
+      );
+
+      await cargarPrerrequisitos(materiaPrerrequisitos.id_materia);
+    } catch (error) {
+      console.error(error);
+      setErrorPrerrequisitos(
+        error.response?.data?.detail ||
+          "No se pudo registrar el prerrequisito",
+      );
+      throw error;
+    } finally {
+      setGuardandoPrerrequisito(false);
+    }
+  };
+
+  const handleEliminarPrerrequisito = async (prerrequisito) => {
+    if (!materiaPrerrequisitos) return;
+
+    const confirmar = window.confirm("Eliminar este prerrequisito?");
+
+    if (!confirmar) return;
+
+    setGuardandoPrerrequisito(true);
+    setErrorPrerrequisitos("");
+
+    try {
+      await eliminarPrerrequisitoMateria(
+        materiaPrerrequisitos.id_materia,
+        prerrequisito.id_prerrequisito,
+      );
+
+      await cargarPrerrequisitos(materiaPrerrequisitos.id_materia);
+    } catch (error) {
+      console.error(error);
+      setErrorPrerrequisitos(
+        error.response?.data?.detail ||
+          "No se pudo eliminar el prerrequisito",
+      );
+    } finally {
+      setGuardandoPrerrequisito(false);
+    }
+  };
+
+  const handleActualizarPrerrequisito = async (prerrequisito, formData) => {
+    if (!materiaPrerrequisitos) return;
+
+    setGuardandoPrerrequisito(true);
+    setErrorPrerrequisitos("");
+
+    try {
+      await actualizarPrerrequisitoMateria(
+        materiaPrerrequisitos.id_materia,
+        prerrequisito.id_prerrequisito,
+        formData,
+      );
+
+      await cargarPrerrequisitos(materiaPrerrequisitos.id_materia);
+    } catch (error) {
+      console.error(error);
+      setErrorPrerrequisitos(
+        error.response?.data?.detail ||
+          "No se pudo actualizar el prerrequisito",
+      );
+    } finally {
+      setGuardandoPrerrequisito(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -169,6 +292,7 @@ export default function MateriasPage() {
             setCarreraFiltro={setCarreraFiltro}
             onEditar={handleEditar}
             onEliminar={handleEliminar}
+            onPrerrequisitos={handleAbrirPrerrequisitos}
           />
         </div>
       </div>
@@ -179,6 +303,23 @@ export default function MateriasPage() {
         onSubmit={handleSubmitModal}
         materia={materiaEditando}
       />
+
+      {modalPrerrequisitosAbierto && (
+        <MateriaPrerrequisitosModal
+          key={materiaPrerrequisitos?.id_materia ?? "prerrequisitos"}
+          open={modalPrerrequisitosAbierto}
+          materia={materiaPrerrequisitos}
+          materias={materias}
+          prerrequisitos={prerrequisitos}
+          loading={loadingPrerrequisitos}
+          guardando={guardandoPrerrequisito}
+          error={errorPrerrequisitos}
+          onClose={handleCerrarPrerrequisitos}
+          onCrear={handleCrearPrerrequisito}
+          onActualizar={handleActualizarPrerrequisito}
+          onEliminar={handleEliminarPrerrequisito}
+        />
+      )}
     </div>
   );
 }

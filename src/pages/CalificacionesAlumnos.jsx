@@ -74,6 +74,39 @@ function agruparCalificaciones(datos) {
   return Object.values(periodos);
 }
 
+function agruparHistorialAcademico(historial = []) {
+  const periodos = {};
+
+  historial.forEach((item) => {
+    const periodoId = item.periodo?.id_periodo || `historial-${item.id_historial}`;
+
+    if (!periodos[periodoId]) {
+      periodos[periodoId] = {
+        id: periodoId,
+        numero: Object.keys(periodos).length + 1,
+        periodo: item.periodo?.nombre || "Historial academico",
+        materias: [],
+      };
+    }
+
+    periodos[periodoId].materias.push({
+      id: item.materia?.id_materia || item.id_historial,
+      materia: item.materia?.nombre || "Materia sin nombre",
+      docente:
+        item.tipo_evaluacion === "EQUIVALENCIA"
+          ? "Equivalencia"
+          : "Historial academico",
+      parciales: [null, null, null],
+      calificacion:
+        item.calificacion_final === null || item.calificacion_final === undefined
+          ? null
+          : String(Math.round(Number(item.calificacion_final))),
+    });
+  });
+
+  return Object.values(periodos);
+}
+
 function gradeBadgeClasses(value) {
   if (value === null || value === undefined) {
     return "bg-slate-100 text-slate-400";
@@ -134,7 +167,12 @@ export default function CalificacionesAlumnos() {
         const calificaciones = await obtenerCalificacionesAlumno(alumnoId);
 
         if (!activo) return;
-        const agrupadas = agruparCalificaciones(calificaciones);
+        const agrupadas =
+          calificaciones.length > 0
+            ? agruparCalificaciones(calificaciones)
+            : agruparHistorialAcademico(
+                expediente.expediente_alumno?.historial_academico || [],
+              );
         setCuatrimestres(agrupadas);
 
         if (agrupadas.length > 0) {
@@ -228,9 +266,9 @@ export default function CalificacionesAlumnos() {
         <div className="flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-slate-600">
           <Info size={18} className="mt-0.5 shrink-0 text-[#0B245B]" />
           <p>
-            Presiona una materia para ver el detalle de sus parciales. La
-            calificación final se calcula con el promedio de los parciales
-            capturados.
+            Presiona una materia para ver el detalle. Si la materia ya fue
+            cerrada en historial academico, veras la calificacion final sin
+            parciales.
           </p>
         </div>
 

@@ -9,6 +9,7 @@ import {
   crearCarrera,
   eliminarCarrera,
   actualizarCarrera,
+  subirLogoCarrera,
 } from "../services/carrerasService";
 
 export default function CarrerasPage() {
@@ -27,6 +28,17 @@ export default function CarrerasPage() {
       setLoading(false);
     }
   }
+
+  const prepararCarreraPayload = async (formData) => {
+    const { logoFile, ...payload } = formData;
+
+    if (logoFile) {
+      const logoSubido = await subirLogoCarrera(logoFile);
+      payload.logo = logoSubido.logo;
+    }
+
+    return payload;
+  };
 
   useEffect(() => {
     let activo = true;
@@ -53,10 +65,15 @@ export default function CarrerasPage() {
 
   const handleCrear = async (formData) => {
     try {
-      await crearCarrera(formData);
+      const payload = await prepararCarreraPayload(formData);
+      await crearCarrera(payload);
       await cargarCarreras();
     } catch (error) {
       console.error(error);
+      window.alert(
+        error.response?.data?.detail ||
+          "No se pudo eliminar la carrera. Revisa si tiene informacion relacionada.",
+      );
     }
   };
 
@@ -67,7 +84,8 @@ export default function CarrerasPage() {
 
   const handleSubmitModal = async (formData) => {
     try {
-      await actualizarCarrera(carreraEditando.id_carrera, formData);
+      const payload = await prepararCarreraPayload(formData);
+      await actualizarCarrera(carreraEditando.id_carrera, payload);
 
       setModalAbierto(false);
       setCarreraEditando(null);

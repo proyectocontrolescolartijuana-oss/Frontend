@@ -23,3 +23,42 @@ export const eliminarMateria = async (id) => {
 
   return response.data;
 };
+
+export const obtenerPrerrequisitosMateria = async (idMateria) => {
+  const response = await api.get(`/materias/${idMateria}/prerrequisitos`);
+
+  return response.data;
+};
+
+export const crearPrerrequisitoMateria = async (idMateria, data) => {
+  const response = await api.post(
+    `/materias/${idMateria}/prerrequisitos`,
+    data,
+  );
+
+  return response.data;
+};
+
+export const actualizarPrerrequisitoMateria = async (
+  idMateria,
+  idPrerrequisito,
+  data,
+) => {
+  const response = await api.patch(
+    `/materias/${idMateria}/prerrequisitos/${idPrerrequisito}`,
+    data,
+  );
+
+  return response.data;
+};
+
+export const eliminarPrerrequisitoMateria = async (
+  idMateria,
+  idPrerrequisito,
+) => {
+  const response = await api.delete(
+    `/materias/${idMateria}/prerrequisitos/${idPrerrequisito}`,
+  );
+
+  return response.data;
+};

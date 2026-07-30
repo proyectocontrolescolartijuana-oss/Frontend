@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, FileText, Search } from "lucide-react";
 import logoUnifront from "../assets/UnifrontLogoColorSinFondo.png";
+import { obtenerMiExpediente } from "../services/authService";
 import {
   obtenerAlumnosDetalle,
   obtenerPeriodos,
@@ -155,11 +156,22 @@ export default function BoletaFinal({ modoAlumno = false }) {
 
       try {
         if (modoAlumno) {
-          const periodosResponse = await obtenerPeriodos();
+          const [periodosResponse, expedienteResponse] = await Promise.all([
+            obtenerPeriodos(),
+            obtenerMiExpediente(),
+          ]);
 
           if (!activo) return;
 
           setPeriodos(periodosResponse);
+          setForm((prev) => ({
+            ...prev,
+            periodoId:
+              prev.periodoId ||
+              expedienteResponse.expediente_alumno
+                ?.historial_academico?.[0]?.periodo?.id_periodo ||
+              "",
+          }));
           return;
         }
 

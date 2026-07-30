@@ -24,6 +24,10 @@ export default function CarreraListCard({ carreras, onEliminar, onEditar }) {
           <thead className="bg-slate-50">
             <tr>
               <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">
+                Logo
+              </th>
+
+              <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">
                 Clave
               </th>
 
@@ -51,6 +55,22 @@ export default function CarreraListCard({ carreras, onEliminar, onEditar }) {
                 key={carrera.id_carrera}
                 className="border-t border-slate-100"
               >
+                <td className="px-6 py-5">
+                  <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                    {carrera.logo ? (
+                      <img
+                        src={carrera.logo}
+                        alt={`Logo de ${carrera.nombre}`}
+                        className="h-full w-full object-contain p-1.5"
+                      />
+                    ) : (
+                      <span className="text-xs font-semibold text-slate-400">
+                        S/L
+                      </span>
+                    )}
+                  </div>
+                </td>
+
                 <td className="px-6 py-5">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-slate-700">
