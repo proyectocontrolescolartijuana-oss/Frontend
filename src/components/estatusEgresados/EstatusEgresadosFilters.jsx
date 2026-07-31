@@ -58,26 +58,12 @@ export default function EstatusEgresadosFilters({
         <button
           type="button"
           onClick={onBuscar}
-          disabled={!carreraId || !grupoId || loadingCatalogos || loadingReporte}
+          disabled={
+            !carreraId || !grupoId || loadingCatalogos || loadingReporte
+          }
           className="self-end rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loadingReporte ? "Consultando..." : "Consultar"}
-        </button>
-      </div>
-      <div className="mt-4 flex gap-3">
-        <input
-          type="search"
-          value={busqueda}
-          onChange={(event) => onBusquedaChange(event.target.value)}
-          placeholder="Filtrar por nombre, matrícula o no. de control..."
-          className="flex-1 rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-blue-500"
-        />
-        <button
-          type="button"
-          onClick={onLimpiarBusqueda}
-          className="rounded-xl border border-slate-200 px-4 py-2 hover:bg-slate-50"
-        >
-          Limpiar
         </button>
       </div>
       {error && (

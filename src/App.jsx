@@ -40,6 +40,7 @@ import TitulacionesPage from "./pages/TitulacionesPage";
 import EquivalenciasPage from "./pages/EquivalenciasPage";
 import MiSemaforoEgresados from "./pages/MiSemaforoEgresados";
 import EstatusEgresados from "./pages/EstatusEgresados";
+import ServicioSocial from "./pages/ServicioSocial";
 
 function App() {
   return (
@@ -507,6 +508,17 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <SemaforoEgresados />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/servicio-social"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ServicioSocial />
               </MainLayout>
             </ProtectedRoute>
           }

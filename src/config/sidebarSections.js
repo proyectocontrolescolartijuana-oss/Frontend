@@ -18,6 +18,7 @@ import {
   KeyRound,
   ListChecks,
   Replace,
+  BriefcaseBusiness,
   TrafficCone,
 } from "lucide-react";
 
@@ -157,6 +158,12 @@ export const sidebarSections = [
         icon: Award,
         label: "Titulaciones",
         path: "/titulaciones",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+      {
+        icon: BriefcaseBusiness,
+        label: "Servicio Social",
+        path: "/servicio-social",
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
     ],

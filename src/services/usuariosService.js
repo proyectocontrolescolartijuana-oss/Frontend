@@ -100,6 +100,12 @@ export const crearDocente = async (data) => {
   return response.data;
 };
 
+export const actualizarDocente = async (idDocente, data) => {
+  const response = await api.patch(`/docentes/${idDocente}`, data);
+
+  return response.data;
+};
+
 export const crearTutor = async (data) => {
   const response = await api.post("/tutores", data);
 

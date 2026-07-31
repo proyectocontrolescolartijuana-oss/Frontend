@@ -8,11 +8,13 @@ import UsuariosHeader from "../components/usuarios/UsuariosHeader";
 import {
   actualizarAlumno,
   actualizarContactoEmergencia,
+  actualizarDocente,
   actualizarProcedenciaAcademica,
   actualizarSeguroMedico,
   actualizarTutor,
   actualizarUsuario,
   crearContactoEmergencia,
+  crearDocente,
   crearProcedenciaAcademica,
   crearSeguroMedico,
   crearTutor,
@@ -61,6 +63,14 @@ const prepararPayload = (payload, camposIgnorados = []) => {
 
   return limpiarPayload(data);
 };
+
+const valorOpcional = (value) => {
+  const texto = String(value ?? "").trim();
+  return texto === "" ? null : texto;
+};
+
+const usuarioTieneRol = (usuario, rol) =>
+  usuario?.roles?.some((role) => role.nombre === rol);
 
 export default function UsuariosPage() {
   const navigate = useNavigate();
@@ -170,6 +180,7 @@ export default function UsuariosPage() {
       setUsuarioEditando({
         ...detalle.usuario,
         alumno: detalle.alumno,
+        docente: detalle.docente,
       });
     } catch (requestError) {
       console.error(requestError);
@@ -185,17 +196,57 @@ export default function UsuariosPage() {
     setGuardando(true);
 
     try {
-      const { numero_control, ...usuarioPayload } = formData;
+      const {
+        numero_control,
+        numero_empleado,
+        especialidad,
+        grado_academico,
+        fecha_ingreso,
+        estado_docente,
+        password,
+        ...usuarioPayload
+      } = formData;
+
+      const usuarioData = {
+        ...usuarioPayload,
+        apellido_materno: valorOpcional(usuarioPayload.apellido_materno),
+        password: password?.trim() || undefined,
+      };
 
       await actualizarUsuario(
         usuarioEditando.id_usuario,
-        limpiarPayload(usuarioPayload),
+        limpiarPayload(usuarioData),
       );
 
       if (usuarioEditando.alumno?.id_alumno) {
         await actualizarAlumno(usuarioEditando.alumno.id_alumno, {
           numero_control: numero_control?.trim() || null,
         });
+      }
+
+      if (
+        usuarioEditando.docente?.id_docente ||
+        usuarioTieneRol(usuarioEditando, "DOCENTE")
+      ) {
+        const docentePayload = {
+          numero_empleado: valorOpcional(numero_empleado),
+          especialidad: valorOpcional(especialidad),
+          grado_academico: valorOpcional(grado_academico),
+          fecha_ingreso: fecha_ingreso || null,
+          estado: Boolean(estado_docente),
+        };
+
+        if (usuarioEditando.docente?.id_docente) {
+          await actualizarDocente(
+            usuarioEditando.docente.id_docente,
+            docentePayload,
+          );
+        } else {
+          await crearDocente({
+            ...docentePayload,
+            id_usuario: usuarioEditando.id_usuario,
+          });
+        }
       }
 
       setMensaje("Usuario actualizado correctamente.");

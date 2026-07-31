@@ -1,14 +1,16 @@
-import { Download, Eye, FileUp, Trash2, X } from "lucide-react";
+import { Download, Eye, FileUp, Save, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 const TIPOS = [
   { key: "OFICIO_CAMPO", label: "Oficio de servicio de campo" },
-  { key: "CARTA_UNIFRONT", label: "Carta de liberación UNIFRONT" },
+  { key: "CARTA_UNIFRONT", label: "Carta de liberacion UNIFRONT" },
   {
     key: "CARTA_PROCEDENCIA",
     label: "Carta del instituto de procedencia",
   },
 ];
+
+const campoInicial = (valor) => (valor == null ? "" : valor);
 
 export default function EstatusEgresadosManualForm({
   alumnos,
@@ -21,7 +23,12 @@ export default function EstatusEgresadosManualForm({
   valoresPorAlumno,
 }) {
   const [alumnoId, setAlumnoId] = useState("");
-  const [horas, setHoras] = useState("");
+  const [formulario, setFormulario] = useState({
+    servicioLugar: "",
+    servicioHoras: "",
+    practicaLugar: "",
+    practicaHoras: "",
+  });
   const [procesando, setProcesando] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [vistaPrevia, setVistaPrevia] = useState(null);
@@ -31,6 +38,13 @@ export default function EstatusEgresadosManualForm({
       if (vistaPrevia?.url) URL.revokeObjectURL(vistaPrevia.url);
     },
     [vistaPrevia],
+  );
+
+  const alumnoSeleccionado = useMemo(
+    () =>
+      alumnos.find((item) => String(item.id_alumno) === String(alumnoId)) ||
+      null,
+    [alumnoId, alumnos],
   );
 
   const documentosAlumno = useMemo(
@@ -43,16 +57,30 @@ export default function EstatusEgresadosManualForm({
 
   if (!alumnos.length) return null;
 
+  const actualizarCampo = (campo, valor) => {
+    setFormulario((actual) => ({ ...actual, [campo]: valor }));
+  };
+
   const seleccionarAlumno = (value) => {
     const alumno = alumnos.find(
       (item) => String(item.id_alumno) === String(value),
     );
+    const valores = valoresPorAlumno[value] || {};
     setAlumnoId(value);
-    setHoras(
-      valoresPorAlumno[value]?.servicio_campo_horas ??
-        alumno?.servicio_campo_horas ??
-        "",
-    );
+    setFormulario({
+      servicioLugar: campoInicial(
+        valores.liberacion_lugar ?? alumno?.liberacion_lugar,
+      ),
+      servicioHoras: campoInicial(
+        valores.liberacion_horas ?? alumno?.liberacion_horas,
+      ),
+      practicaLugar: campoInicial(
+        valores.servicio_campo_lugar ?? alumno?.servicio_campo_lugar,
+      ),
+      practicaHoras: campoInicial(
+        valores.servicio_campo_horas ?? alumno?.servicio_campo_horas,
+      ),
+    });
     setMensaje("");
   };
 
@@ -103,41 +131,62 @@ export default function EstatusEgresadosManualForm({
     setVistaPrevia(null);
   };
 
-  const guardarHoras = async () => {
+  const guardarDatos = async () => {
     const tiposPresentes = new Set(
       documentosAlumno.map((documento) => documento.tipo),
     );
-    setProcesando("HORAS");
+    setProcesando("DATOS");
     setMensaje("");
     try {
       await onGuardar(alumnoId, {
         oficio_servicio_campo: tiposPresentes.has("OFICIO_CAMPO"),
-        servicio_campo_horas: horas === "" ? null : Number(horas),
+        servicio_campo_horas:
+          formulario.practicaHoras === "" ? null : Number(formulario.practicaHoras),
+        servicio_campo_lugar: formulario.practicaLugar.trim(),
+        carta_liberacion_unifront: tiposPresentes.has("CARTA_UNIFRONT"),
+        carta_liberacion_procedencia: tiposPresentes.has("CARTA_PROCEDENCIA"),
+        liberacion_horas:
+          formulario.servicioHoras === "" ? null : Number(formulario.servicioHoras),
+        liberacion_lugar: formulario.servicioLugar.trim(),
       });
-      setMensaje("Horas guardadas correctamente.");
+      setMensaje("Datos guardados correctamente.");
     } catch {
-      setMensaje("No se pudieron guardar las horas.");
+      setMensaje("No se pudieron guardar los datos.");
     } finally {
       setProcesando("");
     }
   };
 
   return (
-    <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-      <h2 className="text-xl font-semibold text-slate-900">
-        Documentos del egresado
-      </h2>
-      <p className="mt-1 text-sm text-slate-600">
-        Adjunta archivos PDF o imágenes. Un archivo nuevo reemplaza al anterior
-        del mismo tipo.
-      </p>
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900">
+            Servicio social y practicas profesionales
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Captura documentos, lugar de la empresa y horas para cada proceso.
+          </p>
+        </div>
+        {alumnoSeleccionado && (
+          <button
+            type="button"
+            onClick={guardarDatos}
+            disabled={Boolean(procesando)}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            <Save size={16} />
+            {procesando === "DATOS" ? "Guardando..." : "Guardar datos"}
+          </button>
+        )}
+      </div>
 
       <label className="mt-4 block max-w-2xl">
         <span className="text-sm font-medium text-slate-700">Alumno</span>
         <select
           value={alumnoId}
           onChange={(event) => seleccionarAlumno(event.target.value)}
-          className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
         >
           <option value="">Selecciona alumno</option>
           {alumnos.map((alumno) => (
@@ -150,13 +199,85 @@ export default function EstatusEgresadosManualForm({
 
       {alumnoId && (
         <>
-          <div className="mt-4 grid gap-4 xl:grid-cols-3">
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-lg border border-slate-200 p-4">
+              <h3 className="text-base font-semibold text-slate-900">
+                Servicio social
+              </h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_160px]">
+                <label>
+                  <span className="text-sm font-medium text-slate-700">
+                    Lugar de la empresa
+                  </span>
+                  <input
+                    type="text"
+                    value={formulario.servicioLugar}
+                    onChange={(event) =>
+                      actualizarCampo("servicioLugar", event.target.value)
+                    }
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label>
+                  <span className="text-sm font-medium text-slate-700">
+                    Horas
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formulario.servicioHoras}
+                    onChange={(event) =>
+                      actualizarCampo("servicioHoras", event.target.value)
+                    }
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 p-4">
+              <h3 className="text-base font-semibold text-slate-900">
+                Practicas profesionales
+              </h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_160px]">
+                <label>
+                  <span className="text-sm font-medium text-slate-700">
+                    Lugar de la empresa
+                  </span>
+                  <input
+                    type="text"
+                    value={formulario.practicaLugar}
+                    onChange={(event) =>
+                      actualizarCampo("practicaLugar", event.target.value)
+                    }
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label>
+                  <span className="text-sm font-medium text-slate-700">
+                    Horas
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formulario.practicaHoras}
+                    onChange={(event) =>
+                      actualizarCampo("practicaHoras", event.target.value)
+                    }
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 xl:grid-cols-3">
             {TIPOS.map((tipo) => {
               const documento = documentoPorTipo(tipo.key);
               return (
                 <div
                   key={tipo.key}
-                  className="rounded-xl border border-amber-200 bg-white p-4"
+                  className="rounded-lg border border-slate-200 bg-slate-50 p-4"
                 >
                   <h3 className="text-sm font-semibold text-slate-800">
                     {tipo.label}
@@ -189,7 +310,7 @@ export default function EstatusEgresadosManualForm({
                           type="button"
                           onClick={() => previsualizar(documento)}
                           disabled={Boolean(procesando)}
-                          className="rounded-lg border border-blue-200 p-2 text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                          className="rounded-lg border border-blue-200 bg-white p-2 text-blue-600 hover:bg-blue-50 disabled:opacity-50"
                           title="Vista previa"
                         >
                           <Eye size={15} />
@@ -197,7 +318,7 @@ export default function EstatusEgresadosManualForm({
                         <button
                           type="button"
                           onClick={() => onDescargar(documento)}
-                          className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
+                          className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-100"
                           title="Descargar"
                         >
                           <Download size={15} />
@@ -206,7 +327,7 @@ export default function EstatusEgresadosManualForm({
                           type="button"
                           onClick={() => eliminar(documento)}
                           disabled={Boolean(procesando)}
-                          className="rounded-lg border border-red-200 p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          className="rounded-lg border border-red-200 bg-white p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
                           title="Eliminar"
                         >
                           <Trash2 size={15} />
@@ -217,29 +338,6 @@ export default function EstatusEgresadosManualForm({
                 </div>
               );
             })}
-          </div>
-
-          <div className="mt-4 flex max-w-md items-end gap-3">
-            <label className="flex-1">
-              <span className="text-sm font-medium text-slate-700">
-                Horas de servicio de campo
-              </span>
-              <input
-                type="number"
-                min="0"
-                value={horas}
-                onChange={(event) => setHoras(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={guardarHoras}
-              disabled={Boolean(procesando)}
-              className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
-            >
-              Guardar horas
-            </button>
           </div>
         </>
       )}
@@ -258,7 +356,7 @@ export default function EstatusEgresadosManualForm({
             if (event.target === event.currentTarget) cerrarVistaPrevia();
           }}
         >
-          <div className="flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div className="flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
               <div className="min-w-0">
                 <h3 className="truncate font-semibold text-slate-900">

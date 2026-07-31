@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Save, X } from "lucide-react";
+import DocenteFields from "./DocenteFields";
 import Field from "./Field";
-import { inputClass } from "./usuarioFormConfig";
+import { docenteInicial, inputClass } from "./usuarioFormConfig";
 import { nombreApellidosPrimero } from "../../utils/nombres";
 
 const getInitialForm = (usuario) => ({
@@ -11,15 +12,22 @@ const getInitialForm = (usuario) => ({
   correo: usuario?.correo || "",
   telefono: usuario?.telefono || "",
   numero_control: usuario?.alumno?.numero_control || "",
+  numero_empleado: usuario?.docente?.numero_empleado || "",
+  especialidad: usuario?.docente?.especialidad || "",
+  grado_academico: usuario?.docente?.grado_academico || "",
+  fecha_ingreso: usuario?.docente?.fecha_ingreso || "",
+  estado_docente: usuario?.docente?.estado ?? true,
   password: "",
 });
 
-const usuarioEsAlumno = (usuario) => {
-  return (
-    Boolean(usuario?.alumno) ||
-    usuario?.roles?.some((role) => role.nombre === "ALUMNO")
-  );
-};
+const usuarioTieneRol = (usuario, rol) =>
+  usuario?.roles?.some((role) => role.nombre === rol);
+
+const usuarioEsAlumno = (usuario) =>
+  Boolean(usuario?.alumno) || usuarioTieneRol(usuario, "ALUMNO");
+
+const usuarioEsDocente = (usuario) =>
+  Boolean(usuario?.docente) || usuarioTieneRol(usuario, "DOCENTE");
 
 export default function UsuarioEditModal({
   usuario,
@@ -32,14 +40,26 @@ export default function UsuarioEditModal({
   if (!usuario) return null;
 
   const esAlumno = usuarioEsAlumno(usuario);
+  const esDocente = usuarioEsDocente(usuario);
+  const docenteForm = {
+    ...docenteInicial,
+    numero_empleado: form.numero_empleado,
+    especialidad: form.especialidad,
+    grado_academico: form.grado_academico,
+    fecha_ingreso: form.fecha_ingreso,
+  };
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
+    const { name, value, type, checked } = event.target;
 
     setForm((prev) => ({
       ...prev,
       [name]:
-        name === "telefono" ? value.replace(/\D/g, "").slice(0, 10) : value,
+        type === "checkbox"
+          ? checked
+          : name === "telefono"
+            ? value.replace(/\D/g, "").slice(0, 10)
+            : value,
     }));
   };
 
@@ -47,7 +67,7 @@ export default function UsuarioEditModal({
     event.preventDefault();
 
     if (!/^\d{10}$/.test(form.telefono)) {
-      alert("El teléfono debe contener exactamente 10 dígitos.");
+      alert("El telefono debe contener exactamente 10 digitos.");
       return;
     }
 
@@ -58,9 +78,9 @@ export default function UsuarioEditModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-2xl rounded-lg bg-white shadow-xl"
+        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white shadow-xl"
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-5">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">
               Editar usuario
@@ -80,90 +100,108 @@ export default function UsuarioEditModal({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 px-6 py-6 md:grid-cols-2">
-          <Field label="Nombre" required>
-            <input
-              className={inputClass}
-              name="nombre"
-              value={form.nombre}
-              onChange={handleChange}
-              required
-            />
-          </Field>
-
-          <Field label="Apellido paterno" required>
-            <input
-              className={inputClass}
-              name="apellido_paterno"
-              value={form.apellido_paterno}
-              onChange={handleChange}
-              required
-            />
-          </Field>
-
-          <Field label="Apellido materno">
-            <input
-              className={inputClass}
-              name="apellido_materno"
-              value={form.apellido_materno}
-              onChange={handleChange}
-            />
-          </Field>
-
-          <Field label="Teléfono" required>
-            <input
-              className={inputClass}
-              type="tel"
-              name="telefono"
-              value={form.telefono}
-              onChange={handleChange}
-              inputMode="numeric"
-              pattern="[0-9]{10}"
-              maxLength={10}
-              title="El teléfono debe contener exactamente 10 dígitos."
-              required
-            />
-          </Field>
-
-          <Field label="Correo institucional" required>
-            <input
-              className={inputClass}
-              type="email"
-              name="correo"
-              value={form.correo}
-              onChange={handleChange}
-              required
-            />
-          </Field>
-
-          {esAlumno && (
-            <Field label="Número de control">
+        <div className="space-y-6 px-6 py-6">
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Field label="Nombre" required>
               <input
                 className={inputClass}
-                name="numero_control"
-                value={form.numero_control}
+                name="nombre"
+                value={form.nombre}
                 onChange={handleChange}
-                disabled={!usuario.alumno}
-                placeholder={
-                  usuario.alumno ? "Ej. 260001" : "Sin expediente de alumno"
-                }
+                required
               />
             </Field>
-          )}
 
-          <Field label="Nueva contraseña">
-            <input
-              className={inputClass}
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              placeholder="Dejar vacía para conservar la actual"
-            />
-          </Field>
+            <Field label="Apellido paterno" required>
+              <input
+                className={inputClass}
+                name="apellido_paterno"
+                value={form.apellido_paterno}
+                onChange={handleChange}
+                required
+              />
+            </Field>
+
+            <Field label="Apellido materno">
+              <input
+                className={inputClass}
+                name="apellido_materno"
+                value={form.apellido_materno}
+                onChange={handleChange}
+              />
+            </Field>
+
+            <Field label="Telefono" required>
+              <input
+                className={inputClass}
+                type="tel"
+                name="telefono"
+                value={form.telefono}
+                onChange={handleChange}
+                inputMode="numeric"
+                pattern="[0-9]{10}"
+                maxLength={10}
+                title="El telefono debe contener exactamente 10 digitos."
+                required
+              />
+            </Field>
+
+            <Field label="Correo institucional" required>
+              <input
+                className={inputClass}
+                type="email"
+                name="correo"
+                value={form.correo}
+                onChange={handleChange}
+                required
+              />
+            </Field>
+
+            {esAlumno && (
+              <Field label="Numero de control">
+                <input
+                  className={inputClass}
+                  name="numero_control"
+                  value={form.numero_control}
+                  onChange={handleChange}
+                  disabled={!usuario.alumno}
+                  placeholder={
+                    usuario.alumno ? "Ej. 260001" : "Sin expediente de alumno"
+                  }
+                />
+              </Field>
+            )}
+
+            <Field label="Nueva contrasena">
+              <input
+                className={inputClass}
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                placeholder="Dejar vacia para conservar la actual"
+              />
+            </Field>
+          </section>
+
+          {esDocente && (
+            <section className="rounded-lg border border-slate-200 p-4">
+              <DocenteFields form={docenteForm} onChange={handleChange} />
+              <label className="mt-4 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  name="estado_docente"
+                  checked={Boolean(form.estado_docente)}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                Docente activo
+              </label>
+            </section>
+          )}
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-5">
+        <div className="sticky bottom-0 flex justify-end gap-3 border-t border-slate-200 bg-white px-6 py-5">
           <button
             type="button"
             onClick={onClose}
