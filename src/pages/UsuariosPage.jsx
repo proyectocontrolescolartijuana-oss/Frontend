@@ -2,19 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import FormAlert from "../components/usuarios/FormAlert";
 import UsuarioDetalleModal from "../components/usuarios/UsuarioDetalleModal";
-import UsuarioEditModal from "../components/usuarios/UsuarioEditModal";
 import UsuariosDirectory from "../components/usuarios/UsuariosDirectory";
 import UsuariosHeader from "../components/usuarios/UsuariosHeader";
+import { useAuth } from "../context/authStore";
 import {
   actualizarAlumno,
   actualizarContactoEmergencia,
-  actualizarDocente,
   actualizarProcedenciaAcademica,
   actualizarSeguroMedico,
   actualizarTutor,
   actualizarUsuario,
   crearContactoEmergencia,
-  crearDocente,
   crearProcedenciaAcademica,
   crearSeguroMedico,
   crearTutor,
@@ -72,8 +70,27 @@ const valorOpcional = (value) => {
 const usuarioTieneRol = (usuario, rol) =>
   usuario?.roles?.some((role) => role.nombre === rol);
 
+const usuarioTieneAlgunRol = (usuario, roles) =>
+  usuario?.roles?.some((role) => roles.includes(role.nombre));
+
+const puedeCambiarPasswordUsuario = (usuarioActual, usuarioObjetivo) => {
+  if (usuarioTieneRol(usuarioActual, "ADMIN")) {
+    return true;
+  }
+
+  if (!usuarioTieneRol(usuarioActual, "CONTROL_ESCOLAR")) {
+    return false;
+  }
+
+  return (
+    usuarioTieneAlgunRol(usuarioObjetivo, ["ALUMNO", "DOCENTE"]) &&
+    !usuarioTieneAlgunRol(usuarioObjetivo, ["ADMIN", "CONTROL_ESCOLAR"])
+  );
+};
+
 export default function UsuariosPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -83,7 +100,6 @@ export default function UsuariosPage() {
   const [busqueda, setBusqueda] = useState("");
   const [rolFiltro, setRolFiltro] = useState("TODOS");
   const [usuarioDetalle, setUsuarioDetalle] = useState(null);
-  const [usuarioEditando, setUsuarioEditando] = useState(null);
 
   const cargarUsuarios = async () => {
     try {
@@ -170,97 +186,9 @@ export default function UsuariosPage() {
     }
   };
 
-  const handleAbrirEdicion = async (usuario) => {
-    setMensaje("");
-    setError("");
-    setDetalleLoading(true);
-
-    try {
-      const detalle = await obtenerDetalleUsuario(usuario);
-      setUsuarioEditando({
-        ...detalle.usuario,
-        alumno: detalle.alumno,
-        docente: detalle.docente,
-      });
-    } catch (requestError) {
-      console.error(requestError);
-      setError("No se pudo cargar el detalle del usuario.");
-    } finally {
-      setDetalleLoading(false);
-    }
-  };
-
-  const handleEditarUsuario = async (formData) => {
-    setMensaje("");
-    setError("");
-    setGuardando(true);
-
-    try {
-      const {
-        numero_control,
-        numero_empleado,
-        especialidad,
-        grado_academico,
-        fecha_ingreso,
-        estado_docente,
-        password,
-        ...usuarioPayload
-      } = formData;
-
-      const usuarioData = {
-        ...usuarioPayload,
-        apellido_materno: valorOpcional(usuarioPayload.apellido_materno),
-        password: password?.trim() || undefined,
-      };
-
-      await actualizarUsuario(
-        usuarioEditando.id_usuario,
-        limpiarPayload(usuarioData),
-      );
-
-      if (usuarioEditando.alumno?.id_alumno) {
-        await actualizarAlumno(usuarioEditando.alumno.id_alumno, {
-          numero_control: numero_control?.trim() || null,
-        });
-      }
-
-      if (
-        usuarioEditando.docente?.id_docente ||
-        usuarioTieneRol(usuarioEditando, "DOCENTE")
-      ) {
-        const docentePayload = {
-          numero_empleado: valorOpcional(numero_empleado),
-          especialidad: valorOpcional(especialidad),
-          grado_academico: valorOpcional(grado_academico),
-          fecha_ingreso: fecha_ingreso || null,
-          estado: Boolean(estado_docente),
-        };
-
-        if (usuarioEditando.docente?.id_docente) {
-          await actualizarDocente(
-            usuarioEditando.docente.id_docente,
-            docentePayload,
-          );
-        } else {
-          await crearDocente({
-            ...docentePayload,
-            id_usuario: usuarioEditando.id_usuario,
-          });
-        }
-      }
-
-      setMensaje("Usuario actualizado correctamente.");
-      setUsuarioEditando(null);
-      await cargarUsuarios();
-    } catch (requestError) {
-      console.error(requestError);
-      setError(obtenerMensajeError(requestError));
-    } finally {
-      setGuardando(false);
-    }
-  };
-
   const handleGuardarComplementarios = async ({
+    usuario: usuarioForm,
+    alumno: alumnoForm,
     tutores,
     contactosEmergencia,
     seguroMedico,
@@ -268,16 +196,57 @@ export default function UsuariosPage() {
   }) => {
     const idAlumno = usuarioDetalle?.alumno?.id_alumno;
 
-    if (!idAlumno) return;
-
     setMensaje("");
     setError("");
     setGuardando(true);
 
     try {
-      const tutoresValidos = tutores
-        .map((tutor) => prepararPayload(tutor, ["localId"]))
-        .filter((tutor) => tutor.nombre?.trim());
+      if (usuarioForm) {
+        const usuarioPayload = {
+          nombre: usuarioForm.nombre,
+          apellido_paterno: usuarioForm.apellido_paterno,
+          apellido_materno: valorOpcional(usuarioForm.apellido_materno),
+          correo: usuarioForm.correo,
+          telefono: usuarioForm.telefono,
+          estado: usuarioForm.estado,
+        };
+
+        if (puedeCambiarPasswordUsuario(user, usuarioDetalle.usuario)) {
+          usuarioPayload.password = usuarioForm.password?.trim() || undefined;
+        }
+
+        await actualizarUsuario(
+          usuarioDetalle.usuario.id_usuario,
+          limpiarPayload(usuarioPayload),
+        );
+      }
+
+      if (alumnoForm && idAlumno) {
+        const alumnoPayload = {
+          matricula: valorOpcional(alumnoForm.matricula),
+          numero_control: valorOpcional(alumnoForm.numero_control),
+          fecha_nacimiento: alumnoForm.fecha_nacimiento || null,
+          ciudad_nacimiento: valorOpcional(alumnoForm.ciudad_nacimiento),
+          municipio_nacimiento: valorOpcional(alumnoForm.municipio_nacimiento),
+          nacionalidad: valorOpcional(alumnoForm.nacionalidad),
+          sexo: valorOpcional(alumnoForm.sexo),
+          curp: valorOpcional(alumnoForm.curp),
+          direccion: valorOpcional(alumnoForm.direccion),
+          ciudad: valorOpcional(alumnoForm.ciudad),
+          estado: valorOpcional(alumnoForm.estado),
+          correo_contacto: valorOpcional(alumnoForm.correo_contacto),
+          fecha_ingreso: alumnoForm.fecha_ingreso || null,
+          estatus: alumnoForm.estatus || undefined,
+        };
+
+        await actualizarAlumno(idAlumno, limpiarPayload(alumnoPayload));
+      }
+
+      const tutoresValidos = idAlumno
+        ? tutores
+            .map((tutor) => prepararPayload(tutor, ["localId"]))
+            .filter((tutor) => tutor.nombre?.trim())
+        : [];
 
       await Promise.all(
         tutoresValidos.map(async (tutor) => {
@@ -292,9 +261,11 @@ export default function UsuariosPage() {
         }),
       );
 
-      const contactosValidos = contactosEmergencia
-        .map((contacto) => prepararPayload(contacto, ["localId"]))
-        .filter((contacto) => contacto.nombre?.trim());
+      const contactosValidos = idAlumno
+        ? contactosEmergencia
+            .map((contacto) => prepararPayload(contacto, ["localId"]))
+            .filter((contacto) => contacto.nombre?.trim())
+        : [];
 
       const contactosNormalizados = contactosValidos.some(
         (contacto) => contacto.contacto_principal,
@@ -320,20 +291,22 @@ export default function UsuariosPage() {
         }),
       );
 
-      const seguroPayload = prepararPayload(seguroMedico, ["id_seguro"]);
+      const seguroPayload = idAlumno
+        ? prepararPayload(seguroMedico, ["id_seguro"])
+        : {};
 
-      if (seguroMedico.id_seguro) {
+      if (idAlumno && seguroMedico.id_seguro) {
         await actualizarSeguroMedico(seguroMedico.id_seguro, seguroPayload);
-      } else if (seguroPayload.tiene_seguro) {
+      } else if (idAlumno && seguroPayload.tiene_seguro) {
         await crearSeguroMedico({
           ...seguroPayload,
           id_alumno: idAlumno,
         });
       }
 
-      const procedenciaPayload = prepararPayload(procedenciaAcademica, [
-        "id_procedencia",
-      ]);
+      const procedenciaPayload = idAlumno
+        ? prepararPayload(procedenciaAcademica, ["id_procedencia"])
+        : {};
 
       if (procedenciaPayload.promedio_general) {
         procedenciaPayload.promedio_general = Number(
@@ -341,12 +314,12 @@ export default function UsuariosPage() {
         );
       }
 
-      if (procedenciaAcademica.id_procedencia) {
+      if (idAlumno && procedenciaAcademica.id_procedencia) {
         await actualizarProcedenciaAcademica(
           procedenciaAcademica.id_procedencia,
           procedenciaPayload,
         );
-      } else if (tieneValores(procedenciaPayload)) {
+      } else if (idAlumno && tieneValores(procedenciaPayload)) {
         await crearProcedenciaAcademica({
           ...procedenciaPayload,
           id_alumno: idAlumno,
@@ -357,6 +330,7 @@ export default function UsuariosPage() {
         usuarioDetalle.usuario,
       );
       setUsuarioDetalle(detalleActualizado);
+      await cargarUsuarios();
       setMensaje("Expediente actualizado correctamente.");
     } catch (requestError) {
       console.error(requestError);
@@ -420,23 +394,18 @@ export default function UsuariosPage() {
         onBusquedaChange={setBusqueda}
         onRolFiltroChange={setRolFiltro}
         onVer={handleVerDetalle}
-        onEditar={handleAbrirEdicion}
         onEliminar={handleEliminarUsuario}
       />
 
       <UsuarioDetalleModal
         detalle={usuarioDetalle}
         guardando={guardando}
+        puedeCambiarPassword={puedeCambiarPasswordUsuario(
+          user,
+          usuarioDetalle?.usuario,
+        )}
         onClose={() => setUsuarioDetalle(null)}
         onGuardarComplementarios={handleGuardarComplementarios}
-      />
-
-      <UsuarioEditModal
-        key={usuarioEditando?.id_usuario || "sin-edicion"}
-        usuario={usuarioEditando}
-        guardando={guardando}
-        onClose={() => setUsuarioEditando(null)}
-        onSubmit={handleEditarUsuario}
       />
     </div>
   );

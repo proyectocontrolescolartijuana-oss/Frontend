@@ -126,7 +126,7 @@ function GroupRows({ className, grupo }) {
           <td className="left">{fila.asignatura}</td>
           <td className="center">{formatCreditos(fila.creditos)}</td>
           <td className="center">{fila.calificacion}</td>
-          <td className="center"></td>
+          <td className="center">{fila.observacion}</td>
         </tr>
       ))}
     </>

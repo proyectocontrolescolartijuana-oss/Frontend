@@ -58,25 +58,34 @@ export const getCertificado = (datos, historial) => {
   if (!datos) return null;
 
   const todasMaterias = getMaterias(historial);
+  const materiasCursadas = todasMaterias.filter((materia) => {
+    const calificacion = Number(materia.calificacion_final);
+
+    return Number.isFinite(calificacion) && calificacion > 0;
+  });
   const totalCreditos = todasMaterias.reduce(
     (suma, materia) => suma + (Number(materia.creditos) || 0),
     0,
   );
-  const promedio = todasMaterias.length
-    ? todasMaterias.reduce(
+  const creditosCursados = materiasCursadas.reduce(
+    (suma, materia) => suma + (Number(materia.creditos) || 0),
+    0,
+  );
+  const promedio = materiasCursadas.length
+    ? materiasCursadas.reduce(
         (suma, materia) => suma + (Number(materia.calificacion_final) || 0),
         0,
-      ) / todasMaterias.length
+      ) / materiasCursadas.length
     : 0;
 
   return {
     licenciatura: datos.carrera || "",
     claveLicenciatura: getRvoeCarrera(datos),
-    asignaturasCursadas: todasMaterias.length,
+    asignaturasCursadas: materiasCursadas.length,
     totalAsignaturas: todasMaterias.length,
-    creditosCursados: formatCreditos(totalCreditos),
+    creditosCursados: formatCreditos(creditosCursados),
     totalCreditos: formatCreditos(totalCreditos),
-    promedioGeneral: promedio.toFixed(2),
+    promedioGeneral: materiasCursadas.length ? promedio.toFixed(2) : "",
     folioSep: "-",
     documento: "Certificado Parcial de Estudios",
     tipoPlan: "Cuatrimestral",
@@ -111,14 +120,30 @@ export const getGruposCuatrimestre = (historial) => {
         ciclo: cuatrimestre.periodo_escolar,
         asignatura: materia.asignatura,
         creditos: materia.creditos,
-        calificacion: materia.calificacion_final,
+        calificacion:
+          materia.calificacion_final === null ||
+          materia.calificacion_final === undefined
+            ? ""
+            : materia.calificacion_final,
+        observacion:
+          materia.tipo_acreditacion === "PENDIENTE" ? "PEND." : "",
       });
     });
   });
 
-  return [...grupos.values()].sort(
-    (a, b) => Number(a.periodoNum) - Number(b.periodoNum),
-  );
+  return [...grupos.values()]
+    .map((grupo) => ({
+      ...grupo,
+      filas: grupo.filas.sort((a, b) => {
+        const aPendiente = a.observacion === "PEND.";
+        const bPendiente = b.observacion === "PEND.";
+
+        if (aPendiente !== bPendiente) return aPendiente ? 1 : -1;
+
+        return String(a.asignatura).localeCompare(String(b.asignatura));
+      }),
+    }))
+    .sort((a, b) => Number(a.periodoNum) - Number(b.periodoNum));
 };
 
 export const getCuatrimestreClassName = (periodoNum) =>

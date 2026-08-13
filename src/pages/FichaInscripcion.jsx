@@ -107,7 +107,8 @@ const getContactoPrincipal = (expediente) =>
 const getSeguro = (expediente) => expediente?.seguros_medicos?.[0] || {};
 
 const buildFichaData = ({ alumnoLista, alumnoDetalle, expedienteDetalle }) => {
-  const alumno = expedienteDetalle?.alumno || alumnoDetalle || alumnoLista || {};
+  const alumno =
+    expedienteDetalle?.alumno || alumnoDetalle || alumnoLista || {};
   const usuario = expedienteDetalle?.usuario || {};
   const expediente = expedienteDetalle?.expediente_alumno || {};
   const procedencia = expediente.procedencia_academica || {};
@@ -159,7 +160,11 @@ const buildFichaData = ({ alumnoLista, alumnoDetalle, expedienteDetalle }) => {
         ? String(procedencia.promedio_general)
         : "",
     tieneSeguro:
-      seguro.tiene_seguro === true ? "SI" : seguro.tiene_seguro === false ? "NO" : "",
+      seguro.tiene_seguro === true
+        ? "SI"
+        : seguro.tiene_seguro === false
+          ? "NO"
+          : "",
     institucionSeguro: seguro.institucion || "",
     padreTutorNombre: padreTutor.nombre || "",
     padreTutorOcupacion: padreTutor.ocupacion || "",
@@ -679,100 +684,102 @@ export default function FichaInscripcion({ modoAlumno = false }) {
       </div>
 
       {!esModoAlumno && (
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm print:hidden">
-        <h2 className="text-xl font-semibold text-slate-900">
-          Datos para autollenado
-        </h2>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm print:hidden">
+          <h2 className="text-xl font-semibold text-slate-900">
+            Datos para autollenado
+          </h2>
 
-        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          <label className="relative block">
-            <span className="text-sm font-medium text-slate-700">Alumno</span>
-            <input
-              type="text"
-              value={
-                mostrarOpciones
-                  ? busquedaAlumno
-                  : form.nombreAlumno || busquedaAlumno
-              }
-              onChange={(event) => {
-                setBusquedaAlumno(event.target.value);
-                setMostrarOpciones(true);
-              }}
-              onFocus={() => {
+          <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <label className="relative block">
+              <span className="text-sm font-medium text-slate-700">Alumno</span>
+              <input
+                type="text"
+                value={
+                  mostrarOpciones
+                    ? busquedaAlumno
+                    : form.nombreAlumno || busquedaAlumno
+                }
+                onChange={(event) => {
+                  setBusquedaAlumno(event.target.value);
+                  setMostrarOpciones(true);
+                }}
+                onFocus={() => {
+                  setBusquedaAlumno("");
+                  setMostrarOpciones(true);
+                }}
+                onBlur={() => {
+                  setTimeout(() => setMostrarOpciones(false), 150);
+                }}
+                disabled={loading}
+                placeholder={
+                  loading
+                    ? "Cargando alumnos..."
+                    : "Busca por nombre o matrícula"
+                }
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+              />
+
+              {mostrarOpciones && (
+                <div className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                  {alumnosFiltrados.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-slate-500">
+                      Sin resultados
+                    </div>
+                  )}
+
+                  {alumnosFiltrados.map((alumno) => (
+                    <button
+                      key={alumno.id_alumno}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        handleAlumnoChange(alumno.id_alumno);
+                        setBusquedaAlumno("");
+                        setMostrarOpciones(false);
+                      }}
+                      className="block w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
+                    >
+                      {alumno.nombre}
+                      {alumno.matricula ? ` - ${alumno.matricula}` : ""}
+                      {alumno.numero_control
+                        ? ` - Control ${alumno.numero_control}`
+                        : ""}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </label>
+
+            <button
+              type="button"
+              onClick={() => {
+                setForm(initialForm);
                 setBusquedaAlumno("");
-                setMostrarOpciones(true);
               }}
-              onBlur={() => {
-                setTimeout(() => setMostrarOpciones(false), 150);
-              }}
-              disabled={loading}
-              placeholder={
-                loading ? "Cargando alumnos..." : "Busca por nombre o matrícula"
-              }
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
-            />
+              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Limpiar ficha
+            </button>
+          </div>
 
-            {mostrarOpciones && (
-              <div className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
-                {alumnosFiltrados.length === 0 && (
-                  <div className="px-3 py-2 text-sm text-slate-500">
-                    Sin resultados
-                  </div>
-                )}
+          {loadingDetalle && (
+            <p className="mt-3 text-sm text-slate-500">
+              Completando datos del expediente...
+            </p>
+          )}
 
-                {alumnosFiltrados.map((alumno) => (
-                  <button
-                    key={alumno.id_alumno}
-                    type="button"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => {
-                      handleAlumnoChange(alumno.id_alumno);
-                      setBusquedaAlumno("");
-                      setMostrarOpciones(false);
-                    }}
-                    className="block w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
-                  >
-                    {alumno.nombre}
-                    {alumno.matricula ? ` - ${alumno.matricula}` : ""}
-                    {alumno.numero_control
-                      ? ` - Control ${alumno.numero_control}`
-                      : ""}
-                  </button>
-                ))}
-              </div>
-            )}
-          </label>
-
-          <button
-            type="button"
-            onClick={() => {
-              setForm(initialForm);
-              setBusquedaAlumno("");
-            }}
-            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            Limpiar ficha
-          </button>
-        </div>
-
-        {loadingDetalle && (
-          <p className="mt-3 text-sm text-slate-500">
-            Completando datos del expediente...
-          </p>
-        )}
-
-        {/* {error && (
+          {/* {error && (
           <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
             {error}
           </p>
         )} */}
-      </section>
+        </section>
       )}
 
       {esModoAlumno && loading && (
-          <p className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500 shadow-sm print:hidden">
-            Cargando tus datos registrados...
-          </p>
+        <p className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500 shadow-sm print:hidden">
+          Cargando tus datos registrados...
+        </p>
       )}
 
       {error && (
@@ -903,265 +910,282 @@ export default function FichaInscripcion({ modoAlumno = false }) {
           id="ficha-inscripcion-preview"
           className="mx-auto rounded-3xl bg-white p-4 shadow-sm"
         >
-        <div className="ficha-hoja ficha-documento">
-          <div className="ficha-top-row">
-            <img src={selloUnifront} alt="Sello Unifront 1954" className="ficha-sello" />
+          <div className="ficha-hoja ficha-documento">
+            <div className="ficha-top-row">
+              <img
+                src={selloUnifront}
+                alt="Sello Unifront 1954"
+                className="ficha-sello"
+              />
 
-            <div className="ficha-header">
-              <div className="ficha-brand" aria-label="UNIFRONT Colegio Ensenada">
-                <span className="ficha-brand-u">U</span>
-                <span className="ficha-brand-text">
-                  <span className="ficha-brand-name">UNIFRONT</span>
-                  <span className="ficha-brand-school">Colegio Ensenada</span>
-                </span>
+              <div className="ficha-header">
+                <div
+                  className="ficha-brand"
+                  aria-label="UNIFRONT Colegio Ensenada"
+                >
+                  <span className="ficha-brand-u">U</span>
+                  <span className="ficha-brand-text">
+                    <span className="ficha-brand-name">NIFRONT</span>
+                    <span className="ficha-brand-school">Colegio Ensenada</span>
+                  </span>
+                </div>
+                <p className="ficha-subtitle">
+                  Departamento de Control Escolar
+                </p>
+                <p className="ficha-subtitle">Inscripción de nuevo ingreso</p>
+                <h2 className="ficha-title">Ficha de Inscripción</h2>
+                <p className="ficha-programa">
+                  {form.carrera || "Licenciatura en Nutrición"}
+                </p>
               </div>
-              <p className="ficha-subtitle">Departamento de Control Escolar</p>
-              <p className="ficha-subtitle">Inscripción de nuevo ingreso</p>
-              <h2 className="ficha-title">Ficha de Inscripción</h2>
-              <p className="ficha-programa">
-                {form.carrera || "Licenciatura en Nutrición"}
-              </p>
+
+              <div className="ficha-meta">
+                <div className="ficha-meta-row">
+                  <span>FECHA:</span>
+                  <span className="ficha-meta-line">{value(form.fecha)}</span>
+                </div>
+              </div>
             </div>
 
-            <div className="ficha-meta">
-              <div className="ficha-meta-row">
-                <span>FECHA:</span>
-                <span className="ficha-meta-line">{value(form.fecha)}</span>
+            <div className="ficha-box">
+              <div className="ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">
+                    Nombre completo del alumno:
+                  </span>
+                  <Line>{form.nombreAlumno}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">Matrícula:</span>
+                  <Line>{form.matricula}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-grid ficha-birth-grid ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">
+                    Lugar y fecha de nacimiento:
+                  </span>
+                  <Line>{form.lugarNacimiento}</Line>
+                  <span className="ficha-mini-note">Ciudad, municipio</span>
+                </div>
+                <div className="ficha-row">
+                  <Line>{form.fechaNacimiento}</Line>
+                  <span className="ficha-mini-note">Día, mes, año</span>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">Edad:</span>
+                  <Line>{form.edad}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-grid ficha-grid-3 ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">Estado civil:</span>
+                  <Line>{form.estadoCivil}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">Clave CURP:</span>
+                  <Line>{form.curp}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">Nacionalidad:</span>
+                  <Line>{form.nacionalidad}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-grid ficha-grid-3 ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">Estatus:</span>
+                  <Line>{form.estatus}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">Grupo:</span>
+                  <Line>{form.grupo}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">Plan de estudios:</span>
+                  <Line>{form.planEstudios}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-grid ficha-grid-3 ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">Tel. hogar:</span>
+                  <Line>{form.telHogar}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">Celular:</span>
+                  <Line>{form.celular}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">Radio:</span>
+                  <Line>{form.radio}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">Correo electrónico:</span>
+                  <Line>{form.correoElectronico}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">Domicilio actual:</span>
+                  <Line>{form.domicilio}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-grid ficha-grid-2 ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">Lugar de trabajo:</span>
+                  <Line>{form.lugarTrabajo}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">Puesto desempeñado:</span>
+                  <Line>{form.puestoDesempenado}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-grid ficha-grid-2 ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">Escuela de procedencia:</span>
+                  <Line>{form.escuelaProcedencia}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">Promedio final:</span>
+                  <Line>{form.promedioFinal}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-grid ficha-grid-2 ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">
+                    ¿Está asegurado actualmente?
+                  </span>
+                  <Line>{form.tieneSeguro}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">
+                    Institución a la que está asegurado(a):
+                  </span>
+                  <Line>{form.institucionSeguro}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-grid ficha-grid-2 ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">
+                    Nombre completo del padre o tutor:
+                  </span>
+                  <Line>{form.padreTutorNombre}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">(Patria potestad)</span>
+                  <Line />
+                </div>
+              </div>
+
+              <div className="ficha-grid ficha-grid-4 ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">Ocupación:</span>
+                  <Line>{form.padreTutorOcupacion}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">Tel. del trabajo:</span>
+                  <Line>{form.padreTutorTelTrabajo}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">Ext.:</span>
+                  <Line>{form.padreTutorExt}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">
+                    Nombre completo de la madre:
+                  </span>
+                  <Line>{form.madreNombre}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-grid ficha-grid-4 ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">Ocupación:</span>
+                  <Line>{form.madreOcupacion}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">Tel. del trabajo:</span>
+                  <Line>{form.madreTelTrabajo}</Line>
+                </div>
+                <div className="ficha-row">
+                  <span className="ficha-label">Ext.:</span>
+                  <Line>{form.madreExt}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-section">
+                <div className="ficha-row">
+                  <span className="ficha-label">
+                    En caso de emergencia avisar a:
+                  </span>
+                  <Line>{form.contactoEmergencia}</Line>
+                  <span className="ficha-label">Tel.:</span>
+                  <Line>{form.contactoTelefono}</Line>
+                </div>
+              </div>
+
+              <div className="ficha-commitment">
+                <p className="ficha-commitment-title">
+                  Al firmar la solicitud me comprometo a:
+                </p>
+                <ol>
+                  <li>
+                    Cumplir fielmente con el Reglamento Escolar que rige la
+                    disciplina de este plantel.
+                  </li>
+                  <li>
+                    Asistir a clases con puntualidad de acuerdo al horario y
+                    turno que se me asigne.
+                  </li>
+                  <li>
+                    Trabajar permanentemente por el buen prestigio académico y
+                    social de la institución.
+                  </li>
+                  <li>
+                    Conservar el mobiliario e instalaciones y pagar los daños
+                    que en forma accidental o intencional cause.
+                  </li>
+                  <li>
+                    Cubrir puntualmente el pago de inscripción y colegiaturas.
+                  </li>
+                  <li>
+                    Informar a Control Escolar cuando desee darme de baja
+                    temporal o definitiva.
+                  </li>
+                </ol>
               </div>
             </div>
+
+            <div className="ficha-footer">
+              <div className="ficha-signature">Firma del alumno (a)</div>
+              <div className="ficha-signature">
+                Firma de conformidad del padre o tutor
+              </div>
+            </div>
+
+            <p className="ficha-note">
+              Nota: Esta ficha es una plantilla para Control Escolar. Imprima y
+              utilice en el proceso de inscripción.
+            </p>
           </div>
-
-          <div className="ficha-box">
-            <div className="ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">Nombre completo del alumno:</span>
-                <Line>{form.nombreAlumno}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">Matrícula:</span>
-                <Line>{form.matricula}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-grid ficha-birth-grid ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">Lugar y fecha de nacimiento:</span>
-                <Line>{form.lugarNacimiento}</Line>
-                <span className="ficha-mini-note">Ciudad, municipio</span>
-              </div>
-              <div className="ficha-row">
-                <Line>{form.fechaNacimiento}</Line>
-                <span className="ficha-mini-note">Día, mes, año</span>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">Edad:</span>
-                <Line>{form.edad}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-grid ficha-grid-3 ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">Estado civil:</span>
-                <Line>{form.estadoCivil}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">Clave CURP:</span>
-                <Line>{form.curp}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">Nacionalidad:</span>
-                <Line>{form.nacionalidad}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-grid ficha-grid-3 ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">Estatus:</span>
-                <Line>{form.estatus}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">Grupo:</span>
-                <Line>{form.grupo}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">Plan de estudios:</span>
-                <Line>{form.planEstudios}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-grid ficha-grid-3 ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">Tel. hogar:</span>
-                <Line>{form.telHogar}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">Celular:</span>
-                <Line>{form.celular}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">Radio:</span>
-                <Line>{form.radio}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">Correo electrónico:</span>
-                <Line>{form.correoElectronico}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">Domicilio actual:</span>
-                <Line>{form.domicilio}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-grid ficha-grid-2 ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">Lugar de trabajo:</span>
-                <Line>{form.lugarTrabajo}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">Puesto desempeñado:</span>
-                <Line>{form.puestoDesempenado}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-grid ficha-grid-2 ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">Escuela de procedencia:</span>
-                <Line>{form.escuelaProcedencia}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">Promedio final:</span>
-                <Line>{form.promedioFinal}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-grid ficha-grid-2 ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">
-                  ¿Está asegurado actualmente?
-                </span>
-                <Line>{form.tieneSeguro}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">
-                  Institución a la que está asegurado(a):
-                </span>
-                <Line>{form.institucionSeguro}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-grid ficha-grid-2 ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">
-                  Nombre completo del padre o tutor:
-                </span>
-                <Line>{form.padreTutorNombre}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">(Patria potestad)</span>
-                <Line />
-              </div>
-            </div>
-
-            <div className="ficha-grid ficha-grid-4 ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">Ocupación:</span>
-                <Line>{form.padreTutorOcupacion}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">Tel. del trabajo:</span>
-                <Line>{form.padreTutorTelTrabajo}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">Ext.:</span>
-                <Line>{form.padreTutorExt}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">Nombre completo de la madre:</span>
-                <Line>{form.madreNombre}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-grid ficha-grid-4 ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">Ocupación:</span>
-                <Line>{form.madreOcupacion}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">Tel. del trabajo:</span>
-                <Line>{form.madreTelTrabajo}</Line>
-              </div>
-              <div className="ficha-row">
-                <span className="ficha-label">Ext.:</span>
-                <Line>{form.madreExt}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-section">
-              <div className="ficha-row">
-                <span className="ficha-label">En caso de emergencia avisar a:</span>
-                <Line>{form.contactoEmergencia}</Line>
-                <span className="ficha-label">Tel.:</span>
-                <Line>{form.contactoTelefono}</Line>
-              </div>
-            </div>
-
-            <div className="ficha-commitment">
-              <p className="ficha-commitment-title">
-                Al firmar la solicitud me comprometo a:
-              </p>
-              <ol>
-                <li>
-                  Cumplir fielmente con el Reglamento Escolar que rige la
-                  disciplina de este plantel.
-                </li>
-                <li>
-                  Asistir a clases con puntualidad de acuerdo al horario y turno
-                  que se me asigne.
-                </li>
-                <li>
-                  Trabajar permanentemente por el buen prestigio académico y
-                  social de la institución.
-                </li>
-                <li>
-                  Conservar el mobiliario e instalaciones y pagar los daños que
-                  en forma accidental o intencional cause.
-                </li>
-                <li>
-                  Cubrir puntualmente el pago de inscripción y colegiaturas.
-                </li>
-                <li>
-                  Informar a Control Escolar cuando desee darme de baja temporal
-                  o definitiva.
-                </li>
-              </ol>
-            </div>
-          </div>
-
-          <div className="ficha-footer">
-            <div className="ficha-signature">Firma del alumno (a)</div>
-            <div className="ficha-signature">
-              Firma de conformidad del padre o tutor
-            </div>
-          </div>
-
-          <p className="ficha-note">
-            Nota: Esta ficha es una plantilla para Control Escolar. Imprima y
-            utilice en el proceso de inscripción.
-          </p>
         </div>
-      </div>
       </div>
     </div>
   );

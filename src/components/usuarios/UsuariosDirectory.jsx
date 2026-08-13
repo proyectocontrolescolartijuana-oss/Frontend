@@ -1,4 +1,4 @@
-import { Edit2, Eye, Search, Trash2, Users } from "lucide-react";
+import { Eye, Search, Trash2, Users } from "lucide-react";
 import { ROLES_USUARIO } from "../../services/usuariosService";
 import { nombreApellidosPrimero } from "../../utils/nombres";
 
@@ -9,7 +9,6 @@ export default function UsuariosDirectory({
   onBusquedaChange,
   onRolFiltroChange,
   onVer,
-  onEditar,
   onEliminar,
 }) {
   return (
@@ -144,16 +143,6 @@ export default function UsuariosDirectory({
                       >
                         <Eye size={18} />
                       </button>
-
-                      <button
-                        type="button"
-                        onClick={() => onEditar(usuario)}
-                        title="Editar"
-                        className="rounded-lg p-2 text-blue-500 transition hover:bg-blue-50 hover:text-blue-700"
-                      >
-                        <Edit2 size={18} />
-                      </button>
-
                       <button
                         type="button"
                         onClick={() => onEliminar(usuario)}

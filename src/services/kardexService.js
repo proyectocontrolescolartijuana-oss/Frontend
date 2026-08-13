@@ -1,17 +1,17 @@
 import api from "./api";
 import { normalizarLogos } from "./urlUtils";
 
-export const obtenerKardexPorMatricula = async (matricula) => {
+export const obtenerKardexPorMatricula = async (matricula, options = {}) => {
   const response = await api.get("/kardex", {
-    params: { matricula },
+    params: { matricula, incluir_plan: options.incluirPlan || undefined },
   });
 
   return normalizarLogos(response.data);
 };
 
-export const obtenerKardexPorBusqueda = async (q) => {
+export const obtenerKardexPorBusqueda = async (q, options = {}) => {
   const response = await api.get("/kardex", {
-    params: { q },
+    params: { q, incluir_plan: options.incluirPlan || undefined },
   });
 
   return normalizarLogos(response.data);

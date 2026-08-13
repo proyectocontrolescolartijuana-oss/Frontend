@@ -10,6 +10,9 @@ import {
 } from "./usuarioFormConfig";
 import { formatDateDDMMYYYY } from "../../utils/fechas";
 
+const lockedInputClass =
+  "w-full cursor-not-allowed rounded-lg border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-500 outline-none ring-1 ring-slate-200";
+
 const checkboxClass =
   "h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500";
 
@@ -43,7 +46,8 @@ function StatusBadge({ value }) {
   return (
     <span
       className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
-        estatusAlumnoStyles[value] || "bg-slate-100 text-slate-700 ring-slate-200"
+        estatusAlumnoStyles[value] ||
+        "bg-slate-100 text-slate-700 ring-slate-200"
       }`}
     >
       {value}
@@ -126,13 +130,43 @@ const prepararProcedencia = (procedencia) => ({
 
 const limpiarTexto = (value) => value ?? "";
 
+const prepararUsuario = (usuario) => ({
+  nombre: usuario?.nombre || "",
+  apellido_paterno: usuario?.apellido_paterno || "",
+  apellido_materno: usuario?.apellido_materno || "",
+  correo: usuario?.correo || "",
+  telefono: usuario?.telefono || "",
+  estado: usuario?.estado || "ACTIVO",
+  password: "",
+});
+
+const prepararAlumno = (alumno) => ({
+  matricula: alumno?.matricula || "",
+  numero_control: alumno?.numero_control || "",
+  fecha_nacimiento: alumno?.fecha_nacimiento || "",
+  ciudad_nacimiento: alumno?.ciudad_nacimiento || "",
+  municipio_nacimiento: alumno?.municipio_nacimiento || "",
+  nacionalidad: alumno?.nacionalidad || "",
+  sexo: alumno?.sexo || "",
+  curp: alumno?.curp || "",
+  direccion: alumno?.direccion || "",
+  ciudad: alumno?.ciudad || "",
+  estado: alumno?.estado || "",
+  correo_contacto: alumno?.correo_contacto || "",
+  fecha_ingreso: alumno?.fecha_ingreso || "",
+  estatus: alumno?.estatus || "ACTIVO",
+});
+
 export default function UsuarioDetalleModal({
   detalle,
   guardando = false,
+  puedeCambiarPassword = false,
   onClose,
   onGuardarComplementarios,
 }) {
   const [editando, setEditando] = useState(false);
+  const [usuarioForm, setUsuarioForm] = useState(prepararUsuario());
+  const [alumnoForm, setAlumnoForm] = useState(prepararAlumno());
   const [tutoresForm, setTutoresForm] = useState([]);
   const [contactosForm, setContactosForm] = useState([]);
   const [seguroForm, setSeguroForm] = useState(seguroMedicoInicial);
@@ -144,6 +178,8 @@ export default function UsuarioDetalleModal({
     const expediente = nextDetalle?.expediente_alumno;
 
     setEditando(false);
+    setUsuarioForm(prepararUsuario(nextDetalle?.usuario));
+    setAlumnoForm(prepararAlumno(nextDetalle?.alumno));
     setTutoresForm(prepararTutores(expediente?.tutores));
     setContactosForm(prepararContactos(expediente?.contactos_emergencia));
     setSeguroForm(prepararSeguro(expediente?.seguros_medicos));
@@ -168,6 +204,25 @@ export default function UsuarioDetalleModal({
   if (!detalle) return null;
 
   const { usuario, alumno, docente, expediente_alumno: expediente } = detalle;
+
+  const handleUsuarioChange = (event) => {
+    const { name, value } = event.target;
+
+    setUsuarioForm((prev) => ({
+      ...prev,
+      [name]:
+        name === "telefono" ? value.replace(/\D/g, "").slice(0, 10) : value,
+    }));
+  };
+
+  const handleAlumnoChange = (event) => {
+    const { name, value } = event.target;
+
+    setAlumnoForm((prev) => ({
+      ...prev,
+      [name]: name === "curp" ? value.toUpperCase().slice(0, 18) : value,
+    }));
+  };
 
   const handleTutorChange = (localId, event) => {
     const { name, value } = event.target;
@@ -281,7 +336,14 @@ export default function UsuarioDetalleModal({
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    if (!/^\d{10}$/.test(usuarioForm.telefono)) {
+      alert("El teléfono debe contener exactamente 10 digitos.");
+      return;
+    }
+
     await onGuardarComplementarios({
+      usuario: usuarioForm,
+      alumno: alumno ? alumnoForm : null,
       tutores: tutoresForm,
       contactosEmergencia: contactosForm,
       seguroMedico: seguroForm,
@@ -303,7 +365,7 @@ export default function UsuarioDetalleModal({
           </div>
 
           <div className="flex items-center gap-2">
-            {alumno && onGuardarComplementarios && (
+            {onGuardarComplementarios && (
               <button
                 type="button"
                 onClick={() => {
@@ -331,24 +393,25 @@ export default function UsuarioDetalleModal({
           </div>
         </div>
 
-        <Section title="Usuario">
-          <dl className="grid grid-cols-1 gap-5 md:grid-cols-3">
-            <DetailItem label="Nombre" value={usuario.nombre} />
-            <DetailItem
-              label="Apellido paterno"
-              value={usuario.apellido_paterno}
-            />
-            <DetailItem
-              label="Apellido materno"
-              value={usuario.apellido_materno}
-            />
-            <DetailItem label="Correo" value={usuario.correo} />
-            <DetailItem label="Teléfono" value={usuario.telefono} />
-            <DetailItem label="Estado de cuenta" value={usuario.estado} />
-          </dl>
-        </Section>
+        {!editando && (
+          <Section title="Usuario">
+            <dl className="grid grid-cols-1 gap-5 md:grid-cols-3">
+              <DetailItem label="Nombre" value={usuario.nombre} />
+              <DetailItem
+                label="Apellido paterno"
+                value={usuario.apellido_paterno}
+              />
+              <DetailItem
+                label="Apellido materno"
+                value={usuario.apellido_materno}
+              />
+              <DetailItem label="Correo" value={usuario.correo} />
+              <DetailItem label="Teléfono" value={usuario.telefono} />
+            </dl>
+          </Section>
+        )}
 
-        {alumno && (
+        {alumno && !editando && (
           <Section title="Alumno">
             <dl className="grid grid-cols-1 gap-5 md:grid-cols-3">
               <DetailItem label="Matrícula" value={alumno.matricula} />
@@ -357,7 +420,7 @@ export default function UsuarioDetalleModal({
                 value={alumno.numero_control}
               />
               <DetailItem
-                label="Estatus academico"
+                label="Estatus académico"
                 value={<StatusBadge value={alumno.estatus} />}
               />
               <DetailItem label="Carrera" value={alumno.carrera?.nombre} />
@@ -375,11 +438,17 @@ export default function UsuarioDetalleModal({
                 label="Correo contacto"
                 value={alumno.correo_contacto}
               />
+              <DetailItem
+                label="Ciudad de Nacimiento"
+                value={alumno.ciudad_nacimiento}
+              />
+              <DetailItem label="Estado de Nacimiento" value={alumno.estado} />
+              <DetailItem label="Dirección" value={alumno.direccion} />
             </dl>
           </Section>
         )}
 
-        {docente && (
+        {docente && !editando && (
           <Section title="Docente">
             <dl className="grid grid-cols-1 gap-5 md:grid-cols-3">
               <DetailItem
@@ -524,303 +593,514 @@ export default function UsuarioDetalleModal({
           </>
         )}
 
-        {expediente && editando && (
+        {editando && (
           <form onSubmit={handleSubmit}>
-            <Section title="Tutores">
-              <div className="space-y-4">
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={agregarTutor}
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-                  >
-                    <Plus size={16} />
-                    Agregar tutor
-                  </button>
-                </div>
-
-                {tutoresForm.map((tutor, index) => (
-                  <div
-                    key={tutor.localId}
-                    className="space-y-4 rounded-lg border border-slate-200 p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-slate-700">
-                        Tutor {index + 1}
-                      </span>
-
-                      {!tutor.id_tutor && tutoresForm.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => eliminarTutorNuevo(tutor.localId)}
-                          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-                        >
-                          <Trash2 size={16} />
-                          Quitar
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <Field label="Nombre del tutor">
-                        <input
-                          className={inputClass}
-                          name="nombre"
-                          value={limpiarTexto(tutor.nombre)}
-                          onChange={(event) =>
-                            handleTutorChange(tutor.localId, event)
-                          }
-                        />
-                      </Field>
-                      <Field label="Parentesco">
-                        <input
-                          className={inputClass}
-                          name="parentesco"
-                          value={limpiarTexto(tutor.parentesco)}
-                          onChange={(event) =>
-                            handleTutorChange(tutor.localId, event)
-                          }
-                        />
-                      </Field>
-                      <Field label="Teléfono">
-                        <input
-                          className={inputClass}
-                          name="telefono"
-                          value={limpiarTexto(tutor.telefono)}
-                          onChange={(event) =>
-                            handleTutorChange(tutor.localId, event)
-                          }
-                        />
-                      </Field>
-                      <Field label="Correo">
-                        <input
-                          className={inputClass}
-                          type="email"
-                          name="correo"
-                          value={limpiarTexto(tutor.correo)}
-                          onChange={(event) =>
-                            handleTutorChange(tutor.localId, event)
-                          }
-                        />
-                      </Field>
-                      <Field label="Ocupación">
-                        <input
-                          className={inputClass}
-                          name="ocupacion"
-                          value={limpiarTexto(tutor.ocupacion)}
-                          onChange={(event) =>
-                            handleTutorChange(tutor.localId, event)
-                          }
-                        />
-                      </Field>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Section>
-
-            <Section title="Contactos de emergencia">
-              <div className="space-y-4">
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={agregarContacto}
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-                  >
-                    <Plus size={16} />
-                    Agregar contacto
-                  </button>
-                </div>
-
-                {contactosForm.map((contacto, index) => (
-                  <div
-                    key={contacto.localId}
-                    className="space-y-4 rounded-lg border border-slate-200 p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-slate-700">
-                        Contacto {index + 1}
-                      </span>
-
-                      {!contacto.id_contacto && contactosForm.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            eliminarContactoNuevo(contacto.localId)
-                          }
-                          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-                        >
-                          <Trash2 size={16} />
-                          Quitar
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <Field label="Nombre del contacto">
-                        <input
-                          className={inputClass}
-                          name="nombre"
-                          value={limpiarTexto(contacto.nombre)}
-                          onChange={(event) =>
-                            handleContactoChange(contacto.localId, event)
-                          }
-                        />
-                      </Field>
-                      <Field label="Parentesco">
-                        <input
-                          className={inputClass}
-                          name="parentesco"
-                          value={limpiarTexto(contacto.parentesco)}
-                          onChange={(event) =>
-                            handleContactoChange(contacto.localId, event)
-                          }
-                        />
-                      </Field>
-                      <Field label="Teléfono">
-                        <input
-                          className={inputClass}
-                          name="telefono"
-                          value={limpiarTexto(contacto.telefono)}
-                          onChange={(event) =>
-                            handleContactoChange(contacto.localId, event)
-                          }
-                        />
-                      </Field>
-                      <Field label="Correo">
-                        <input
-                          className={inputClass}
-                          type="email"
-                          name="correo"
-                          value={limpiarTexto(contacto.correo)}
-                          onChange={(event) =>
-                            handleContactoChange(contacto.localId, event)
-                          }
-                        />
-                      </Field>
-                      <div className="md:col-span-2">
-                        <Field label="Dirección">
-                          <textarea
-                            className={inputClass}
-                            name="direccion"
-                            value={limpiarTexto(contacto.direccion)}
-                            onChange={(event) =>
-                              handleContactoChange(contacto.localId, event)
-                            }
-                            rows={3}
-                          />
-                        </Field>
-                      </div>
-                      <CheckboxField
-                        label="Contacto principal"
-                        name="contacto_principal"
-                        checked={Boolean(contacto.contacto_principal)}
-                        onChange={(event) =>
-                          handleContactoChange(contacto.localId, event)
-                        }
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Section>
-
-            <Section title="Seguro y procedencia">
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <div className="space-y-4 rounded-lg border border-slate-200 p-4">
-                  <h4 className="font-semibold text-slate-900">
-                    Seguro médico
-                  </h4>
-
-                  <CheckboxField
-                    label="Tiene seguro"
-                    name="tiene_seguro"
-                    checked={Boolean(seguroForm.tiene_seguro)}
-                    onChange={handleSeguroChange}
+            <Section title="Usuario">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <Field label="Nombre" required>
+                  <input
+                    className={inputClass}
+                    name="nombre"
+                    value={usuarioForm.nombre}
+                    onChange={handleUsuarioChange}
+                    required
                   />
-
-                  {seguroForm.tiene_seguro && (
-                    <div className="grid grid-cols-1 gap-4">
-                      <Field label="Institución" required>
-                        <input
-                          className={inputClass}
-                          name="institucion"
-                          value={limpiarTexto(seguroForm.institucion)}
-                          onChange={handleSeguroChange}
-                          required
-                        />
-                      </Field>
-                      <Field label="Número de póliza" required>
-                        <input
-                          className={inputClass}
-                          name="numero_poliza"
-                          value={limpiarTexto(seguroForm.numero_poliza)}
-                          onChange={handleSeguroChange}
-                          required
-                        />
-                      </Field>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-4 rounded-lg border border-slate-200 p-4">
-                  <h4 className="font-semibold text-slate-900">
-                    Procedencia académica
-                  </h4>
-
-                  <Field label="Escuela de procedencia">
+                </Field>
+                <Field label="Apellido paterno" required>
+                  <input
+                    className={inputClass}
+                    name="apellido_paterno"
+                    value={usuarioForm.apellido_paterno}
+                    onChange={handleUsuarioChange}
+                    required
+                  />
+                </Field>
+                <Field label="Apellido materno">
+                  <input
+                    className={inputClass}
+                    name="apellido_materno"
+                    value={usuarioForm.apellido_materno}
+                    onChange={handleUsuarioChange}
+                  />
+                </Field>
+                <Field label="Correo" required>
+                  <input
+                    className={inputClass}
+                    type="email"
+                    name="correo"
+                    value={usuarioForm.correo}
+                    onChange={handleUsuarioChange}
+                    required
+                  />
+                </Field>
+                <Field label="Teléfono" required>
+                  <input
+                    className={inputClass}
+                    type="tel"
+                    name="telefono"
+                    value={usuarioForm.telefono}
+                    onChange={handleUsuarioChange}
+                    inputMode="numeric"
+                    pattern="[0-9]{10}"
+                    maxLength={10}
+                    required
+                  />
+                </Field>
+                {puedeCambiarPassword && (
+                  <Field label="Nueva contraseña">
                     <input
                       className={inputClass}
-                      name="escuela_procedencia"
-                      value={limpiarTexto(procedenciaForm.escuela_procedencia)}
-                      onChange={handleProcedenciaChange}
+                      type="password"
+                      name="password"
+                      value={usuarioForm.password}
+                      onChange={handleUsuarioChange}
+                      placeholder="Dejar vacia para conservar la actual"
                     />
                   </Field>
-                  <Field label="Nivel académico">
+                )}
+              </div>
+            </Section>
+
+            {alumno && (
+              <Section title="Alumno">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <Field label="Matrícula" required>
+                    <input
+                      className={lockedInputClass}
+                      name="matricula"
+                      value={alumnoForm.matricula}
+                      onChange={handleAlumnoChange}
+                      readOnly
+                      aria-readonly="true"
+                    />
+                  </Field>
+                  <Field label="Número de control">
+                    <input
+                      className={inputClass}
+                      name="numero_control"
+                      value={alumnoForm.numero_control}
+                      onChange={handleAlumnoChange}
+                    />
+                  </Field>
+                  <Field label="Estatus académico">
                     <select
                       className={inputClass}
-                      name="nivel_academico"
-                      value={limpiarTexto(procedenciaForm.nivel_academico)}
-                      onChange={handleProcedenciaChange}
+                      name="estatus"
+                      value={alumnoForm.estatus}
+                      onChange={handleAlumnoChange}
                     >
-                      <option value="">Selecciona nivel</option>
-                      <option value="BACHILLERATO">Bachillerato</option>
-                      <option value="UNIVERSIDAD">Universidad</option>
-                      <option value="OTRO">Otro</option>
+                      <option value="ACTIVO">Activo</option>
+                      <option value="BAJA">Baja</option>
+                      <option value="EGRESADO">Egresado</option>
+                      <option value="TITULADO">Titulado</option>
                     </select>
                   </Field>
-                  <Field label="Estado de procedencia">
-                    <input
-                      className={inputClass}
-                      name="estado_procedencia"
-                      value={limpiarTexto(procedenciaForm.estado_procedencia)}
-                      onChange={handleProcedenciaChange}
-                    />
-                  </Field>
-                  <Field label="Promedio general">
-                    <input
-                      className={inputClass}
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      max={100}
-                      name="promedio_general"
-                      value={limpiarTexto(procedenciaForm.promedio_general)}
-                      onChange={handleProcedenciaChange}
-                    />
-                  </Field>
-                  <Field label="Fecha de egreso">
+                  <Field label="Fecha nacimiento" required>
                     <input
                       className={inputClass}
                       type="date"
-                      name="fecha_egreso"
-                      value={limpiarTexto(procedenciaForm.fecha_egreso)}
-                      onChange={handleProcedenciaChange}
+                      name="fecha_nacimiento"
+                      value={alumnoForm.fecha_nacimiento}
+                      onChange={handleAlumnoChange}
                     />
                   </Field>
+                  <Field label="Fecha ingreso" required>
+                    <input
+                      className={inputClass}
+                      type="date"
+                      name="fecha_ingreso"
+                      value={alumnoForm.fecha_ingreso}
+                      onChange={handleAlumnoChange}
+                    />
+                  </Field>
+                  <Field label="Sexo" required>
+                    <select
+                      className={inputClass}
+                      name="sexo"
+                      value={alumnoForm.sexo}
+                      onChange={handleAlumnoChange}
+                    >
+                      <option value="">Sin registrar</option>
+                      <option value="F">Femenino</option>
+                      <option value="M">Masculino</option>
+                    </select>
+                  </Field>
+                  <Field label="CURP" required>
+                    <input
+                      className={inputClass}
+                      name="curp"
+                      value={alumnoForm.curp}
+                      onChange={handleAlumnoChange}
+                      maxLength={18}
+                    />
+                  </Field>
+                  <Field label="Nacionalidad" required>
+                    <input
+                      className={inputClass}
+                      name="nacionalidad"
+                      value={alumnoForm.nacionalidad}
+                      onChange={handleAlumnoChange}
+                    />
+                  </Field>
+                  <Field label="Correo contacto" required>
+                    <input
+                      className={inputClass}
+                      type="email"
+                      name="correo_contacto"
+                      value={alumnoForm.correo_contacto}
+                      onChange={handleAlumnoChange}
+                    />
+                  </Field>
+                  <Field label="Ciudad nacimiento" required>
+                    <input
+                      className={inputClass}
+                      name="ciudad_nacimiento"
+                      value={alumnoForm.ciudad_nacimiento}
+                      onChange={handleAlumnoChange}
+                    />
+                  </Field>
+                  <Field label="Municipio nacimiento" required>
+                    <input
+                      className={inputClass}
+                      name="municipio_nacimiento"
+                      value={alumnoForm.municipio_nacimiento}
+                      onChange={handleAlumnoChange}
+                    />
+                  </Field>
+                  <Field label="Estado" required>
+                    <input
+                      className={inputClass}
+                      name="estado"
+                      value={alumnoForm.estado}
+                      onChange={handleAlumnoChange}
+                    />
+                  </Field>
+                  <Field label="Ciudad" required>
+                    <input
+                      className={inputClass}
+                      name="ciudad"
+                      value={alumnoForm.ciudad}
+                      onChange={handleAlumnoChange}
+                    />
+                  </Field>
+                  <div className="md:col-span-2">
+                    <Field label="Dirección" required>
+                      <textarea
+                        className={inputClass}
+                        name="direccion"
+                        value={alumnoForm.direccion}
+                        onChange={handleAlumnoChange}
+                        rows={3}
+                      />
+                    </Field>
+                  </div>
                 </div>
-              </div>
-            </Section>
+              </Section>
+            )}
+
+            {expediente && (
+              <Section title="Tutores">
+                <div className="space-y-4">
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={agregarTutor}
+                      className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                    >
+                      <Plus size={16} />
+                      Agregar tutor
+                    </button>
+                  </div>
+
+                  {tutoresForm.map((tutor, index) => (
+                    <div
+                      key={tutor.localId}
+                      className="space-y-4 rounded-lg border border-slate-200 p-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-slate-700">
+                          Tutor {index + 1}
+                        </span>
+
+                        {!tutor.id_tutor && tutoresForm.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => eliminarTutorNuevo(tutor.localId)}
+                            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                          >
+                            <Trash2 size={16} />
+                            Quitar
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <Field label="Nombre del tutor">
+                          <input
+                            className={inputClass}
+                            name="nombre"
+                            value={limpiarTexto(tutor.nombre)}
+                            onChange={(event) =>
+                              handleTutorChange(tutor.localId, event)
+                            }
+                          />
+                        </Field>
+                        <Field label="Parentesco">
+                          <input
+                            className={inputClass}
+                            name="parentesco"
+                            value={limpiarTexto(tutor.parentesco)}
+                            onChange={(event) =>
+                              handleTutorChange(tutor.localId, event)
+                            }
+                          />
+                        </Field>
+                        <Field label="Teléfono">
+                          <input
+                            className={inputClass}
+                            name="telefono"
+                            value={limpiarTexto(tutor.telefono)}
+                            onChange={(event) =>
+                              handleTutorChange(tutor.localId, event)
+                            }
+                          />
+                        </Field>
+                        <Field label="Correo">
+                          <input
+                            className={inputClass}
+                            type="email"
+                            name="correo"
+                            value={limpiarTexto(tutor.correo)}
+                            onChange={(event) =>
+                              handleTutorChange(tutor.localId, event)
+                            }
+                          />
+                        </Field>
+                        <Field label="Ocupación">
+                          <input
+                            className={inputClass}
+                            name="ocupacion"
+                            value={limpiarTexto(tutor.ocupacion)}
+                            onChange={(event) =>
+                              handleTutorChange(tutor.localId, event)
+                            }
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+
+            {expediente && (
+              <Section title="Contactos de emergencia">
+                <div className="space-y-4">
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={agregarContacto}
+                      className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                    >
+                      <Plus size={16} />
+                      Agregar contacto
+                    </button>
+                  </div>
+
+                  {contactosForm.map((contacto, index) => (
+                    <div
+                      key={contacto.localId}
+                      className="space-y-4 rounded-lg border border-slate-200 p-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-slate-700">
+                          Contacto {index + 1}
+                        </span>
+
+                        {!contacto.id_contacto && contactosForm.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              eliminarContactoNuevo(contacto.localId)
+                            }
+                            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                          >
+                            <Trash2 size={16} />
+                            Quitar
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <Field label="Nombre del contacto">
+                          <input
+                            className={inputClass}
+                            name="nombre"
+                            value={limpiarTexto(contacto.nombre)}
+                            onChange={(event) =>
+                              handleContactoChange(contacto.localId, event)
+                            }
+                          />
+                        </Field>
+                        <Field label="Parentesco">
+                          <input
+                            className={inputClass}
+                            name="parentesco"
+                            value={limpiarTexto(contacto.parentesco)}
+                            onChange={(event) =>
+                              handleContactoChange(contacto.localId, event)
+                            }
+                          />
+                        </Field>
+                        <Field label="Teléfono">
+                          <input
+                            className={inputClass}
+                            name="telefono"
+                            value={limpiarTexto(contacto.telefono)}
+                            onChange={(event) =>
+                              handleContactoChange(contacto.localId, event)
+                            }
+                          />
+                        </Field>
+                        <Field label="Correo">
+                          <input
+                            className={inputClass}
+                            type="email"
+                            name="correo"
+                            value={limpiarTexto(contacto.correo)}
+                            onChange={(event) =>
+                              handleContactoChange(contacto.localId, event)
+                            }
+                          />
+                        </Field>
+                        <div className="md:col-span-2">
+                          <Field label="Dirección">
+                            <textarea
+                              className={inputClass}
+                              name="direccion"
+                              value={limpiarTexto(contacto.direccion)}
+                              onChange={(event) =>
+                                handleContactoChange(contacto.localId, event)
+                              }
+                              rows={3}
+                            />
+                          </Field>
+                        </div>
+                        <CheckboxField
+                          label="Contacto principal"
+                          name="contacto_principal"
+                          checked={Boolean(contacto.contacto_principal)}
+                          onChange={(event) =>
+                            handleContactoChange(contacto.localId, event)
+                          }
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+
+            {expediente && (
+              <Section title="Seguro y procedencia">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div className="space-y-4 rounded-lg border border-slate-200 p-4">
+                    <h4 className="font-semibold text-slate-900">
+                      Seguro médico
+                    </h4>
+
+                    <CheckboxField
+                      label="Tiene seguro"
+                      name="tiene_seguro"
+                      checked={Boolean(seguroForm.tiene_seguro)}
+                      onChange={handleSeguroChange}
+                    />
+
+                    {seguroForm.tiene_seguro && (
+                      <div className="grid grid-cols-1 gap-4">
+                        <Field label="Institución" required>
+                          <input
+                            className={inputClass}
+                            name="institucion"
+                            value={limpiarTexto(seguroForm.institucion)}
+                            onChange={handleSeguroChange}
+                            required
+                          />
+                        </Field>
+                        <Field label="Número de póliza" required>
+                          <input
+                            className={inputClass}
+                            name="numero_poliza"
+                            value={limpiarTexto(seguroForm.numero_poliza)}
+                            onChange={handleSeguroChange}
+                            required
+                          />
+                        </Field>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-4 rounded-lg border border-slate-200 p-4">
+                    <h4 className="font-semibold text-slate-900">
+                      Procedencia académica
+                    </h4>
+
+                    <Field label="Escuela de procedencia">
+                      <input
+                        className={inputClass}
+                        name="escuela_procedencia"
+                        value={limpiarTexto(
+                          procedenciaForm.escuela_procedencia,
+                        )}
+                        onChange={handleProcedenciaChange}
+                      />
+                    </Field>
+                    <Field label="Nivel académico">
+                      <select
+                        className={inputClass}
+                        name="nivel_academico"
+                        value={limpiarTexto(procedenciaForm.nivel_academico)}
+                        onChange={handleProcedenciaChange}
+                      >
+                        <option value="">Selecciona nivel</option>
+                        <option value="BACHILLERATO">Bachillerato</option>
+                        <option value="UNIVERSIDAD">Universidad</option>
+                        <option value="OTRO">Otro</option>
+                      </select>
+                    </Field>
+                    <Field label="Estado de procedencia">
+                      <input
+                        className={inputClass}
+                        name="estado_procedencia"
+                        value={limpiarTexto(procedenciaForm.estado_procedencia)}
+                        onChange={handleProcedenciaChange}
+                      />
+                    </Field>
+                    <Field label="Promedio general">
+                      <input
+                        className={inputClass}
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        max={100}
+                        name="promedio_general"
+                        value={limpiarTexto(procedenciaForm.promedio_general)}
+                        onChange={handleProcedenciaChange}
+                      />
+                    </Field>
+                    <Field label="Fecha de egreso">
+                      <input
+                        className={inputClass}
+                        type="date"
+                        name="fecha_egreso"
+                        value={limpiarTexto(procedenciaForm.fecha_egreso)}
+                        onChange={handleProcedenciaChange}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </Section>
+            )}
 
             <div className="sticky bottom-0 flex justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
               <button

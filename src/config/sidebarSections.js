@@ -178,6 +178,12 @@ export const sidebarSections = [
         roles: ["ADMIN", "CONTROL_ESCOLAR"],
       },
       {
+        icon: ClipboardList,
+        label: "Monitoreo calificaciones",
+        path: "/monitoreo-calificaciones",
+        roles: ["ADMIN", "CONTROL_ESCOLAR"],
+      },
+      {
         icon: ClipboardCheck,
         label: "Formato de evaluacion",
         path: "/formato-evaluacion",

@@ -64,8 +64,8 @@ export default function TodasLasMaterias() {
 
     try {
       const data = terminoForzado
-        ? await obtenerKardexPorMatricula(termino)
-        : await obtenerKardexPorBusqueda(termino);
+        ? await obtenerKardexPorMatricula(termino, { incluirPlan: true })
+        : await obtenerKardexPorBusqueda(termino, { incluirPlan: true });
 
       setDatos(data);
       setBusqueda(data.matricula || data.numero_control || termino);

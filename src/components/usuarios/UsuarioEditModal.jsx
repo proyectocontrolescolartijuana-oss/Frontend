@@ -32,6 +32,7 @@ const usuarioEsDocente = (usuario) =>
 export default function UsuarioEditModal({
   usuario,
   guardando,
+  puedeCambiarPassword = false,
   onClose,
   onSubmit,
 }) {
@@ -131,7 +132,7 @@ export default function UsuarioEditModal({
               />
             </Field>
 
-            <Field label="Telefono" required>
+            <Field label="Teléfono" required>
               <input
                 className={inputClass}
                 type="tel"
@@ -141,7 +142,7 @@ export default function UsuarioEditModal({
                 inputMode="numeric"
                 pattern="[0-9]{10}"
                 maxLength={10}
-                title="El telefono debe contener exactamente 10 digitos."
+                title="El teléfono debe contener exactamente 10 digitos."
                 required
               />
             </Field>
@@ -158,7 +159,7 @@ export default function UsuarioEditModal({
             </Field>
 
             {esAlumno && (
-              <Field label="Numero de control">
+              <Field label="Número de control">
                 <input
                   className={inputClass}
                   name="numero_control"
@@ -172,16 +173,18 @@ export default function UsuarioEditModal({
               </Field>
             )}
 
-            <Field label="Nueva contrasena">
-              <input
-                className={inputClass}
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="Dejar vacia para conservar la actual"
-              />
-            </Field>
+            {puedeCambiarPassword && (
+              <Field label="Nueva contraseña">
+                <input
+                  className={inputClass}
+                  type="password"
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="Dejar vacia para conservar la actual"
+                />
+              </Field>
+            )}
           </section>
 
           {esDocente && (

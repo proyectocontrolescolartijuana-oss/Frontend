@@ -11,6 +11,7 @@ import DocumentosAlumnoPage from "./pages/DocumentosAlumnoPage";
 import AlumnosGruposPage from "./pages/AlumnosGruposPage";
 import AsistenciaPage from "./pages/AsistenciaPage";
 import CapturaCalificacionesPage from "./pages/CapturaCalificacionesPage";
+import MonitoreoCalificacionesPage from "./pages/MonitoreoCalificacionesPage";
 import UsuariosAltaPage from "./pages/UsuariosAltaPage";
 import UsuariosPage from "./pages/UsuariosPage";
 import CuadroHonorPage from "./pages/CuadroHonorPage";
@@ -131,6 +132,17 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <CapturaCalificacionesPage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/monitoreo-calificaciones"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <MonitoreoCalificacionesPage />
               </MainLayout>
             </ProtectedRoute>
           }

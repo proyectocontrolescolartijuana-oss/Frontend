@@ -109,7 +109,7 @@ export default function MateriaForm({
 
           <input
             type="number"
-            step="0.01"
+            step="0.001"
             name="creditos"
             value={form.creditos}
             onChange={handleChange}

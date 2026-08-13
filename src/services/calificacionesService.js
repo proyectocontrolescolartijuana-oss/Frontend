@@ -15,6 +15,24 @@ export const obtenerCapturaGrupo = async (grupoMateriaId) => {
   return response.data;
 };
 
+export const obtenerMonitoreoCalificacionesPeriodoActual = async () => {
+  const response = await api.get("/calificaciones/monitoreo/periodo-actual");
+
+  return response.data;
+};
+
+export const guardarCapturaMonitoreoCalificaciones = async (
+  grupoMateriaId,
+  calificaciones,
+) => {
+  const response = await api.post("/calificaciones/monitoreo/captura", {
+    grupo_materia_id: grupoMateriaId,
+    calificaciones,
+  });
+
+  return response.data;
+};
+
 export const guardarCapturaCalificaciones = async (
   grupoMateriaId,
   calificaciones,
