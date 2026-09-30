@@ -63,12 +63,18 @@ export const getCertificado = (datos, historial) => {
 
     return Number.isFinite(calificacion) && calificacion > 0;
   });
-  const totalCreditos = todasMaterias.reduce(
-    (suma, materia) => suma + (Number(materia.creditos) || 0),
-    0,
-  );
-  const creditosCursados = materiasCursadas.reduce(
-    (suma, materia) => suma + (Number(materia.creditos) || 0),
+  const totalCreditos =
+    Number(datos.total_creditos_plan) ||
+    todasMaterias.reduce((suma, m) => suma + (Number(m.creditos) || 0), 0);
+
+  const aprobadas = new Map();
+  todasMaterias.forEach((m) => {
+    if (Number(m.calificacion_final) >= 70) {
+      aprobadas.set(m.id_materia ?? m.asignatura, m);
+    }
+  });
+  const creditosCursados = [...aprobadas.values()].reduce(
+    (suma, m) => suma + (Number(m.creditos) || 0),
     0,
   );
   const promedio = materiasCursadas.length
@@ -82,8 +88,8 @@ export const getCertificado = (datos, historial) => {
     licenciatura: datos.carrera || "",
     claveLicenciatura: getRvoeCarrera(datos),
     asignaturasCursadas: materiasCursadas.length,
-    totalAsignaturas: todasMaterias.length,
     creditosCursados: formatCreditos(creditosCursados),
+    totalAsignaturas: Number(datos.total_asignaturas_plan) || todasMaterias.length,
     totalCreditos: formatCreditos(totalCreditos),
     promedioGeneral: materiasCursadas.length ? promedio.toFixed(2) : "",
     folioSep: "-",
