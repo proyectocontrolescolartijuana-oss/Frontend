@@ -308,8 +308,8 @@ export default function ReciboDocumentosOriginales() {
           .recibo-logo {
             display: block;
             position: absolute;
-            top: 0.68in;
-            right: 0.33in;
+            top: 0.67in;
+            left: 0.33in;
             width: 2.35in;
             height: auto;
             margin: 0;
