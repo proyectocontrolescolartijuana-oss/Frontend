@@ -1,0 +1,527 @@
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import FormAlert from "../components/usuarios/FormAlert";
+import UsuarioAltaSuccessModal from "../components/usuarios/UsuarioAltaSuccessModal";
+import UsuarioForm from "../components/usuarios/UsuarioForm";
+import {
+  alumnoInicial,
+  contactoEmergenciaInicial,
+  DEFAULT_USER_PASSWORD,
+  docenteInicial,
+  procedenciaAcademicaInicial,
+  seguroMedicoInicial,
+  tutorInicial,
+  usuarioInicial,
+} from "../components/usuarios/usuarioFormConfig";
+import { obtenerGrupos } from "../services/alumnosGruposService";
+import { obtenerCarreras } from "../services/carrerasService";
+import { obtenerPeriodos } from "../services/periodosService";
+import { obtenerPlanesEstudio } from "../services/planesEstudioService";
+import { crearUsuarioPorRol } from "../services/usuariosService";
+
+const limpiarPayload = (payload) => {
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== ""),
+  );
+};
+
+const obtenerMensajeError = (error) => {
+  const detail = error.response?.data?.detail;
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => item.msg || item.loc?.join("."))
+      .filter(Boolean)
+      .join(" | ");
+  }
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  return "No se pudo crear el usuario.";
+};
+
+const tieneValores = (payload) => {
+  return Object.values(payload).some(
+    (value) => value !== "" && value !== false && value !== null,
+  );
+};
+
+const parseFechaLocal = (fecha) => {
+  if (!fecha) {
+    return null;
+  }
+
+  const [year, month, day] = String(fecha).split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  return new Date(year, month - 1, day);
+};
+
+const ordenarPorFechaInicio = (periodos = []) => {
+  return [...periodos].sort((a, b) => {
+    const fechaA = parseFechaLocal(a.fecha_inicio)?.getTime() || 0;
+    const fechaB = parseFechaLocal(b.fecha_inicio)?.getTime() || 0;
+
+    if (fechaA !== fechaB) {
+      return fechaA - fechaB;
+    }
+
+    return Number(a.id_periodo) - Number(b.id_periodo);
+  });
+};
+
+const obtenerPeriodosAltaAlumno = (periodos = []) => {
+  const activos = ordenarPorFechaInicio(
+    periodos.filter((periodo) => periodo.estado === "ACTIVO"),
+  );
+  const pendientes = periodos.filter(
+    (periodo) => periodo.estado === "PENDIENTE",
+  );
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const pendientesFuturos = pendientes.filter((periodo) => {
+    if (!periodo.fecha_inicio) {
+      return false;
+    }
+
+    const fechaInicio = parseFechaLocal(periodo.fecha_inicio);
+
+    return fechaInicio && fechaInicio >= hoy;
+  });
+
+  const pendienteCercano = ordenarPorFechaInicio(
+    pendientesFuturos.length > 0 ? pendientesFuturos : pendientes,
+  )[0];
+
+  return [...activos, pendienteCercano].filter(Boolean);
+};
+
+const obtenerPeriodoAltaDefaultId = (periodos = []) => {
+  const disponibles = obtenerPeriodosAltaAlumno(periodos);
+
+  return (
+    disponibles.find((periodo) => periodo.estado === "ACTIVO")?.id_periodo ||
+    disponibles[0]?.id_periodo ||
+    ""
+  );
+};
+
+export default function UsuariosAltaPage() {
+  const navigate = useNavigate();
+  const [rol, setRol] = useState("ALUMNO");
+  const [usuarioForm, setUsuarioForm] = useState(usuarioInicial);
+  const [alumnoForm, setAlumnoForm] = useState(alumnoInicial);
+  const [docenteForm, setDocenteForm] = useState(docenteInicial);
+  const [tutorForm, setTutorForm] = useState(tutorInicial);
+  const [contactosEmergenciaForm, setContactosEmergenciaForm] = useState([
+    { ...contactoEmergenciaInicial, id: crypto.randomUUID() },
+  ]);
+  const [seguroMedicoForm, setSeguroMedicoForm] = useState(seguroMedicoInicial);
+  const [procedenciaAcademicaForm, setProcedenciaAcademicaForm] = useState(
+    procedenciaAcademicaInicial,
+  );
+  const [carreras, setCarreras] = useState([]);
+  const [planes, setPlanes] = useState([]);
+  const [grupos, setGrupos] = useState([]);
+  const [periodos, setPeriodos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [registroCreado, setRegistroCreado] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let activo = true;
+
+    Promise.all([
+      obtenerCarreras(),
+      obtenerPlanesEstudio(),
+      obtenerGrupos(),
+      obtenerPeriodos(),
+    ]).then(
+      ([
+        carrerasResponse,
+        planesResponse,
+        gruposResponse,
+        periodosResponse,
+      ]) => {
+        if (activo) {
+          setCarreras(carrerasResponse);
+          setPlanes(planesResponse);
+          setGrupos(gruposResponse);
+          setPeriodos(periodosResponse);
+          setAlumnoForm((prev) => ({
+            ...prev,
+            id_periodo:
+              prev.id_periodo || obtenerPeriodoAltaDefaultId(periodosResponse),
+          }));
+        }
+      },
+    )
+      .catch((requestError) => {
+        console.error(requestError);
+
+        if (activo) {
+          setError("No se pudieron cargar los catalogos del formulario.");
+        }
+      })
+      .finally(() => {
+        if (activo) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  const planesDisponibles = useMemo(() => {
+    if (!alumnoForm.id_carrera) {
+      return planes;
+    }
+
+    return planes.filter(
+      (plan) => plan.carrera?.id_carrera === Number(alumnoForm.id_carrera),
+    );
+  }, [planes, alumnoForm.id_carrera]);
+
+  const gruposDisponibles = useMemo(() => {
+    const gruposActivos = grupos.filter(
+      (grupo) => (grupo.estatus || "ACTIVO") === "ACTIVO",
+    );
+
+    if (!alumnoForm.id_carrera) {
+      return gruposActivos;
+    }
+
+    return gruposActivos.filter((grupo) => {
+      const coincideCarrera =
+        grupo.id_carrera === Number(alumnoForm.id_carrera);
+      const coincidePlan =
+        !alumnoForm.id_plan ||
+        !grupo.id_plan ||
+        grupo.id_plan === Number(alumnoForm.id_plan);
+
+      return coincideCarrera && coincidePlan;
+    });
+  }, [grupos, alumnoForm.id_carrera, alumnoForm.id_plan]);
+
+  const periodosDisponiblesAlumno = useMemo(() => {
+    return obtenerPeriodosAltaAlumno(periodos);
+  }, [periodos]);
+
+  const resetForm = () => {
+    setUsuarioForm(usuarioInicial);
+    setAlumnoForm({
+      ...alumnoInicial,
+      id_periodo: obtenerPeriodoAltaDefaultId(periodos),
+    });
+    setDocenteForm(docenteInicial);
+    setTutorForm(tutorInicial);
+    setContactosEmergenciaForm([
+      { ...contactoEmergenciaInicial, id: crypto.randomUUID() },
+    ]);
+    setSeguroMedicoForm(seguroMedicoInicial);
+    setProcedenciaAcademicaForm(procedenciaAcademicaInicial);
+    setRol("ALUMNO");
+  };
+
+  const handleSimpleChange = (setter) => (event) => {
+    const { name, value, type, checked } = event.target;
+
+    setter((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleAlumnoChange = (event) => {
+    const { name, value } = event.target;
+
+    setAlumnoForm((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === "id_carrera" ? { id_plan: "", id_grupo: "" } : {}),
+      ...(name === "id_plan" ? { id_grupo: "" } : {}),
+    }));
+  };
+
+  const handleSeguroMedicoChange = (event) => {
+    const { name, value, type, checked } = event.target;
+
+    setSeguroMedicoForm((prev) => {
+      if (name === "tiene_seguro" && !checked) {
+        return {
+          ...prev,
+          tiene_seguro: false,
+          institucion: "",
+          numero_poliza: "",
+        };
+      }
+
+      return {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+    });
+  };
+
+  const handleContactoEmergenciaChange = (id, event) => {
+    const { name, value, type, checked } = event.target;
+
+    setContactosEmergenciaForm((prev) =>
+      prev.map((contacto) => {
+        if (contacto.id !== id) {
+          if (name === "contacto_principal" && checked) {
+            return {
+              ...contacto,
+              contacto_principal: false,
+            };
+          }
+
+          return contacto;
+        }
+
+        return {
+          ...contacto,
+          [name]: type === "checkbox" ? checked : value,
+        };
+      }),
+    );
+  };
+
+  const handleAgregarContactoEmergencia = () => {
+    setContactosEmergenciaForm((prev) => [
+      ...prev,
+      {
+        ...contactoEmergenciaInicial,
+        id: crypto.randomUUID(),
+        contacto_principal: prev.length === 0,
+      },
+    ]);
+  };
+
+  const handleEliminarContactoEmergencia = (id) => {
+    setContactosEmergenciaForm((prev) => {
+      const contactos = prev.filter((contacto) => contacto.id !== id);
+
+      if (
+        contactos.length > 0 &&
+        !contactos.some((c) => c.contacto_principal)
+      ) {
+        return contactos.map((contacto, index) => ({
+          ...contacto,
+          contacto_principal: index === 0,
+        }));
+      }
+
+      return contactos;
+    });
+  };
+
+  const prepararAlumno = () => {
+    const data = limpiarPayload(alumnoForm);
+    delete data.matricula;
+
+    const alumno = {
+      ...data,
+      id_carrera: Number(data.id_carrera),
+      id_plan: Number(data.id_plan),
+    };
+
+    if (data.id_grupo) {
+      alumno.id_grupo = Number(data.id_grupo);
+    }
+
+    if (data.id_periodo) {
+      alumno.id_periodo = Number(data.id_periodo);
+    }
+
+    return alumno;
+  };
+
+  const prepararTutor = () => {
+    if (!tutorForm.nombre.trim()) {
+      return undefined;
+    }
+
+    return limpiarPayload(tutorForm);
+  };
+
+  const prepararContactosEmergencia = () => {
+    const contactos = contactosEmergenciaForm
+      .filter((contacto) => contacto.nombre.trim())
+      .map((contacto) => {
+        const data = { ...contacto };
+        delete data.id;
+
+        return limpiarPayload(data);
+      });
+
+    if (contactos.length === 0) {
+      return undefined;
+    }
+
+    if (!contactos.some((contacto) => contacto.contacto_principal)) {
+      return contactos.map((contacto, index) => ({
+        ...contacto,
+        contacto_principal: index === 0,
+      }));
+    }
+
+    return contactos;
+  };
+
+  const prepararSeguroMedico = () => {
+    if (!seguroMedicoForm.tiene_seguro) {
+      return undefined;
+    }
+
+    if (!tieneValores(seguroMedicoForm)) {
+      return undefined;
+    }
+
+    return limpiarPayload(seguroMedicoForm);
+  };
+
+  const prepararProcedenciaAcademica = () => {
+    if (!tieneValores(procedenciaAcademicaForm)) {
+      return undefined;
+    }
+
+    const data = limpiarPayload(procedenciaAcademicaForm);
+
+    if (data.promedio_general) {
+      data.promedio_general = Number(data.promedio_general);
+    }
+
+    return data;
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setRegistroCreado(null);
+    setError("");
+    setGuardando(true);
+
+    try {
+      const resultado = await crearUsuarioPorRol({
+        rol,
+        usuario: {
+          ...limpiarPayload(usuarioForm),
+          password: usuarioForm.password || DEFAULT_USER_PASSWORD,
+        },
+        alumno: rol === "ALUMNO" ? prepararAlumno() : undefined,
+        docente: rol === "DOCENTE" ? limpiarPayload(docenteForm) : undefined,
+        tutor: rol === "ALUMNO" ? prepararTutor() : undefined,
+        contactosEmergencia:
+          rol === "ALUMNO" ? prepararContactosEmergencia() : undefined,
+        seguroMedico: rol === "ALUMNO" ? prepararSeguroMedico() : undefined,
+        procedenciaAcademica:
+          rol === "ALUMNO" ? prepararProcedenciaAcademica() : undefined,
+      });
+
+      if (rol === "ALUMNO") {
+        setRegistroCreado({
+          matricula: resultado.alumno?.matricula || "",
+          correoInstitucional: resultado.usuario?.correo || "",
+        });
+      } else {
+        setRegistroCreado({});
+      }
+    } catch (requestError) {
+      console.error(requestError);
+      setError(obtenerMensajeError(requestError));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const handleCerrarRegistroCreado = () => {
+    setRegistroCreado(null);
+    resetForm();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-300 border-t-blue-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-slate-900">Alta de usuario</h1>
+
+          <p className="mt-1 text-slate-500">
+            Captura usuarios, alumnos, docentes o control escolar.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate("/usuarios")}
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+        >
+          <ArrowLeft size={18} />
+          Volver al directorio
+        </button>
+      </div>
+
+      <div className="h-px w-full bg-slate-200" />
+
+      {error && <FormAlert type="error">{error}</FormAlert>}
+
+      <div className="max">
+        <UsuarioForm
+          rol={rol}
+          usuarioForm={usuarioForm}
+          alumnoForm={alumnoForm}
+          docenteForm={docenteForm}
+          tutorForm={tutorForm}
+          contactosEmergenciaForm={contactosEmergenciaForm}
+          seguroMedicoForm={seguroMedicoForm}
+          procedenciaAcademicaForm={procedenciaAcademicaForm}
+          carreras={carreras}
+          planesDisponibles={planesDisponibles}
+          gruposDisponibles={gruposDisponibles}
+          periodos={periodosDisponiblesAlumno}
+          mensaje=""
+          error=""
+          guardando={guardando}
+          onRolChange={setRol}
+          onUsuarioChange={handleSimpleChange(setUsuarioForm)}
+          onAlumnoChange={handleAlumnoChange}
+          onDocenteChange={handleSimpleChange(setDocenteForm)}
+          onTutorChange={handleSimpleChange(setTutorForm)}
+          onContactoEmergenciaChange={handleContactoEmergenciaChange}
+          onAgregarContactoEmergencia={handleAgregarContactoEmergencia}
+          onEliminarContactoEmergencia={handleEliminarContactoEmergencia}
+          onSeguroMedicoChange={handleSeguroMedicoChange}
+          onProcedenciaAcademicaChange={handleSimpleChange(
+            setProcedenciaAcademicaForm,
+          )}
+          onReset={resetForm}
+          onSubmit={handleSubmit}
+        />
+      </div>
+
+      <UsuarioAltaSuccessModal
+        open={Boolean(registroCreado)}
+        data={registroCreado}
+        onClose={handleCerrarRegistroCreado}
+      />
+    </div>
+  );
+}
