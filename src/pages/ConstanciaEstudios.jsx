@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, FileText } from "lucide-react";
-import logoUnifront from "../assets/UnifrontLogoColorSinFondo.png";
+import logoUnifront from "../assets/UnifrontLogoAzul.png";
 import { obtenerAlumnosDetalle } from "../services/usuariosService";
 
 const initialForm = {
@@ -269,8 +269,8 @@ export default function ConstanciaEstudios() {
 
           .logo-unifront {
             position: absolute;
-            left: 0.33in;
-            top: 0.75in;
+            left: 0.0in;
+            top: 1.2in;
             width: 2.82in;
             height: auto;
           }
@@ -278,7 +278,7 @@ export default function ConstanciaEstudios() {
           .datos-institucion {
             position: absolute;
             top: 0.33in;
-            left: 1.64in;
+            left: 0.7in;
             right: 0.52in;
             text-align: center;
             font-size: 9.8pt;

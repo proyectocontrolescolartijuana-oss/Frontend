@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Download, FileText, Search } from "lucide-react";
-import logoUnifront from "../assets/UnifrontLogoColorSinFondo.png";
+import logoUnifront from "../assets/UnifrontLogoAzul.png";
 import {
   obtenerGruposMaterias,
   obtenerPeriodos,
@@ -163,9 +163,10 @@ export default function RegistroReinscripcionAlumnos() {
           }
 
           .reinscripcion-logo {
-            width: 1.6in;
-            height: 0.62in;
+            width: 2.1in;
+            height: auto;
             object-fit: contain;
+            margin-left: -0.1in;
           }
 
           .reinscripcion-title {

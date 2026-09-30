@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, FileText } from "lucide-react";
-import logoUnifront from "../assets/UnifrontLogoColorSinFondo.png";
+import logoUnifront from "../assets/UnifrontLogoAzul.png";
 import { obtenerGrupos, obtenerPeriodos } from "../services/alumnosGruposService";
 import { obtenerCuatrimestres } from "../services/planesEstudioService";
 import { obtenerAlumnosDetalle } from "../services/usuariosService";
@@ -217,7 +217,7 @@ export default function ActaExamenTituloSuficiencia() {
           .acta-titulo-logo {
             width: 2.98in;
             height: auto;
-            margin: 0 auto 0.12in;
+            margin: 0 auto 0.22in;
           }
 
           .acta-titulo-principal {
@@ -638,14 +638,14 @@ export default function ActaExamenTituloSuficiencia() {
               </div>
 
               <div className="acta-titulo-row">
-                <span className="acta-titulo-label">De la Licenciatura en</span>
+                <span className="acta-titulo-label">De la Licenciatura en:</span>
                 <span className="acta-titulo-linea acta-titulo-linea-carrera">
                   {lineValue(form.licenciatura)}
                 </span>
               </div>
 
               <div className="acta-titulo-row">
-                <span className="acta-titulo-label">Matricula:</span>
+                <span className="acta-titulo-label">Matrícula:</span>
                 <span className="acta-titulo-linea acta-titulo-linea-corta">
                   {lineValue(form.matricula)}
                 </span>
@@ -678,7 +678,7 @@ export default function ActaExamenTituloSuficiencia() {
 
               <div className="acta-titulo-row">
                 <span className="acta-titulo-label">
-                  Obteniendo la calificacion
+                  Obteniendo la calificación
                 </span>
                 <span className="acta-titulo-linea acta-titulo-linea-full">
                   {lineValue(form.calificacionLetra)}

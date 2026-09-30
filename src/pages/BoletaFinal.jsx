@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, FileText, Search } from "lucide-react";
-import logoUnifront from "../assets/UnifrontLogoColorSinFondo.png";
+import logoUnifront from "../assets/UnifrontLogoAzul.png";
 import { obtenerMiExpediente } from "../services/authService";
 import {
   obtenerAlumnosDetalle,
@@ -296,44 +296,37 @@ export default function BoletaFinal({ modoAlumno = false }) {
             background: #fff;
           }
 
-          .boleta-header {
-            position: relative;
-            min-height: 1.55in;
-            text-align: center;
-          }
+         .boleta-header {
+          position: relative;
+          min-height: 1.2in;
+          text-align: center;
+        }
 
           .boleta-logo-left {
             position: absolute;
             top: 0;
-            left: 0;
-            width: 1.72in;
-            height: auto;
-          }
-
-          .boleta-logo-right {
-            position: absolute;
-            top: 0.04in;
-            right: 0.08in;
-            width: 1.05in;
+            left: 0; 
+            width: 1.6in; 
             height: auto;
           }
 
           .boleta-title-school {
-            margin: 0 1.1in;
-            font-size: 18pt;
-            font-weight: 500;
-            line-height: 1.05;
+            margin: 0 1.7in; 
+            font-size: 13pt; 
+            font-weight: 700;
+            line-height: 1.15;
           }
 
           .boleta-subtitle {
-            margin: 0.3in 0 0;
-            font-size: 8.1pt;
+            margin: 0.1in 0 0; 
+            font-size: 7.8pt;
             font-weight: 700;
+            line-height: 1.2;
           }
 
           .boleta-main-title {
-            margin: 0.1in 0 0.12in;
-            font-size: 22pt;
+            margin: 0.15in 0 0.12in;
+            font-size: 20pt;
             font-style: italic;
             font-weight: 900;
             text-align: center;
@@ -668,11 +661,6 @@ export default function BoletaFinal({ modoAlumno = false }) {
                 className="boleta-logo-left"
                 src={logoUnifront}
                 alt="UNIFRONT"
-              />
-              <img
-                className="boleta-logo-right"
-                src={boleta?.carrera?.logo || logoUnifront}
-                alt={boleta?.carrera?.nombre || "UNIFRONT"}
               />
 
               <h2 className="boleta-title-school">

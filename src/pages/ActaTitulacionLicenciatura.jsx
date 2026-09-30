@@ -256,7 +256,7 @@ export default function ActaTitulacionLicenciatura() {
           }
 
           .acta-titulacion-logo {
-            width: 1.08in;
+            width: 1.10in;
             height: auto;
             margin: 0.06in auto 0;
           }

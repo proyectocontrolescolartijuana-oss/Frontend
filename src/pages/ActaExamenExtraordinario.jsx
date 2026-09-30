@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, FileText } from "lucide-react";
-import logoUnifront from "../assets/UnifrontLogoColorSinFondo.png";
+import logoUnifront from "../assets/UnifrontLogoAzul.png";
 import { obtenerGrupos, obtenerPeriodos } from "../services/alumnosGruposService";
 import { obtenerCuatrimestres } from "../services/planesEstudioService";
 import { obtenerAlumnosDetalle } from "../services/usuariosService";
@@ -213,7 +213,7 @@ export default function ActaExamenExtraordinario() {
           .acta-logo {
             width: 2.98in;
             height: auto;
-            margin: 0 auto 0.06in;
+            margin: 0 auto 0.22in;
           }
 
           .acta-titulo {

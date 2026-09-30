@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, FileText } from "lucide-react";
-import logoUnifront from "../assets/UnifrontLogoColorSinFondo.png";
+import logoUnifront from "../assets/UnifrontLogoAzul.png";
 import { obtenerCarreras } from "../services/carrerasService";
 import {
   obtenerAlumnos,
@@ -301,7 +301,7 @@ export default function ReciboDocumentosOriginales() {
           .recibo-marco {
             position: relative;
             min-height: 10.44in;
-            padding: 1.52in 0.48in 0.28in;
+            padding: 1.7in 0.48in 0.28in;
             border: 7px solid #0d4354;
           }
 
