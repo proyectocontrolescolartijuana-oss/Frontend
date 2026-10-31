@@ -4,9 +4,8 @@ import logoUnifront from "../assets/UnifrontLogoAzul.png";
 import { obtenerGrupos, obtenerPeriodos } from "../services/alumnosGruposService";
 import { obtenerCuatrimestres } from "../services/planesEstudioService";
 import { obtenerAlumnosDetalle } from "../services/usuariosService";
-import { formatDateDDMMYYYY } from "../utils/fechas";
 
-const DIRECCION_ESCUELA = "Blvd. Bernardo O'Higgins No. 6050, Los Alamos";
+const DIRECCION_ESCUELA = "Blvd. Bernardo O'Higgins No. 6050, Los Álamos";
 
 const normalizar = (value = "") =>
   value
@@ -16,9 +15,60 @@ const normalizar = (value = "") =>
     .toLowerCase()
     .trim();
 
+// Fecha local en formato YYYY-MM-DD (lo que espera <input type="date">)
+const hoy = () => {
+  const d = new Date();
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mes}-${dia}`;
+};
+
+// YYYY-MM-DD -> DD/MM/YYYY sin pasar por new Date (evita el desfase de un día)
+const formatearFecha = (value) => {
+  if (!value) return "";
+  const [anio, mes, dia] = value.split("-");
+  if (!anio || !mes || !dia) return "";
+  return `${dia}/${mes}/${anio}`;
+};
+
+const NUMEROS_LETRA = [
+  "CERO",
+  "UNO",
+  "DOS",
+  "TRES",
+  "CUATRO",
+  "CINCO",
+  "SEIS",
+  "SIETE",
+  "OCHO",
+  "NUEVE",
+  "DIEZ",
+];
+
+// 8 -> "OCHO", 8.5 -> "OCHO PUNTO CINCO"
+const calificacionALetra = (value) => {
+  if (value === "" || value === null || value === undefined) return "";
+
+  const numero = Number(value);
+  if (Number.isNaN(numero) || numero < 0 || numero > 10) return "";
+
+  const [entero, decimal] = String(value).split(".");
+  const letraEntero = NUMEROS_LETRA[Number(entero)];
+
+  if (!letraEntero) return "";
+  if (!decimal || Number(decimal) === 0) return letraEntero;
+
+  const letraDecimal = decimal
+    .split("")
+    .map((digito) => NUMEROS_LETRA[Number(digito)])
+    .join(" ");
+
+  return `${letraEntero} PUNTO ${letraDecimal}`;
+};
+
 const initialForm = {
   idAlumno: "",
-  fecha: "",
+  fecha: hoy(),
   periodo: "",
   direccionEscuela: DIRECCION_ESCUELA,
   nombreAlumno: "",
@@ -31,6 +81,9 @@ const initialForm = {
   calificacionLetra: "",
   calificacionNumero: "",
 };
+
+const inputClass =
+  "mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
 
 export default function ActaExamenExtraordinario() {
   const [form, setForm] = useState(initialForm);
@@ -146,6 +199,17 @@ export default function ActaExamenExtraordinario() {
     );
   }, [periodos]);
 
+  // Llena el periodo en cuanto cargan los periodos, si el campo sigue vacío
+  useEffect(() => {
+    if (!periodoActivo?.nombre) return;
+
+    setForm((currentForm) =>
+      currentForm.periodo
+        ? currentForm
+        : { ...currentForm, periodo: periodoActivo.nombre },
+    );
+  }, [periodoActivo]);
+
   const handleAlumnoChange = (idAlumno) => {
     const alumno = alumnosDetalle.find(
       (item) => Number(item.id_alumno) === Number(idAlumno),
@@ -154,7 +218,7 @@ export default function ActaExamenExtraordinario() {
     setForm((currentForm) => ({
       ...currentForm,
       idAlumno,
-      periodo: periodoActivo?.nombre || "",
+      periodo: periodoActivo?.nombre || currentForm.periodo,
       direccionEscuela: DIRECCION_ESCUELA,
       nombreAlumno: alumno?.nombre || "",
       licenciatura: alumno?.carrera?.nombre || "",
@@ -173,12 +237,29 @@ export default function ActaExamenExtraordinario() {
     }));
   };
 
+  // Al capturar el número, la letra se llena sola (sigue siendo editable)
+  const handleCalificacionNumeroChange = (event) => {
+    const { value } = event.target;
+
+    setForm((currentForm) => ({
+      ...currentForm,
+      calificacionNumero: value,
+      calificacionLetra: calificacionALetra(value),
+    }));
+  };
+
+  const incompleto =
+    !form.nombreAlumno || !form.materia || form.calificacionNumero === "";
+
   const handleDownload = () => {
+    const tituloAnterior = document.title;
+    document.title = `Acta_Extraordinario_${form.matricula || "alumno"}`;
     window.print();
+    document.title = tituloAnterior;
   };
 
   const lineValue = (value) => value || "";
-  const fechaLineValue = (value) => formatDateDDMMYYYY(value);
+  const fechaLineValue = (value) => formatearFecha(value);
 
   return (
     <div className="space-y-6 p-6">
@@ -251,6 +332,10 @@ export default function ActaExamenExtraordinario() {
             margin-bottom: 0.07in;
           }
 
+          .acta-row-leyenda {
+            margin-bottom: 0.28in;
+          }
+
           .acta-label {
             flex: 0 0 auto;
             white-space: nowrap;
@@ -264,15 +349,14 @@ export default function ActaExamenExtraordinario() {
             font-weight: 600;
             text-align: center;
             line-height: 0.18in;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
 
           .acta-linea-full {
             flex: 1 1 auto;
             min-width: 0;
-          }
-
-          .acta-linea-nombre {
-            min-width: 2.1in;
           }
 
           .acta-linea-carrera {
@@ -289,13 +373,38 @@ export default function ActaExamenExtraordinario() {
             min-width: 0.95in;
           }
 
+          /* Campo con leyenda debajo de la línea (LETRA / NÚMERO) */
+          .acta-campo {
+            position: relative;
+            display: flex;
+          }
+
+          .acta-campo-full {
+            flex: 1 1 auto;
+            min-width: 0;
+          }
+
+          .acta-campo .acta-linea {
+            width: 100%;
+          }
+
+          .acta-campo-leyenda {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 0.02in;
+            font-size: 10pt;
+            text-align: center;
+          }
+
           .acta-atencion {
             margin: 0.23in 0 0.28in;
             text-align: center;
           }
 
           .acta-aviso {
-            margin: 0.23in 0 0.62in;
+            margin: 0.42in 0 0.62in;
             font-weight: 700;
             text-align: left;
           }
@@ -331,14 +440,6 @@ export default function ActaExamenExtraordinario() {
           .acta-copias {
             margin-top: 0.3in;
             font-size: 8.5pt;
-          }
-
-          .acta-sublinea {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            margin-top: 0.01in;
-            font-size: 10pt;
-            text-align: center;
           }
 
           @media print {
@@ -398,7 +499,13 @@ export default function ActaExamenExtraordinario() {
         <button
           type="button"
           onClick={handleDownload}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+          disabled={incompleto}
+          title={
+            incompleto
+              ? "Captura alumno, materia y calificación para descargar"
+              : undefined
+          }
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:bg-slate-300"
         >
           <Download size={18} />
           Descargar PDF
@@ -446,9 +553,9 @@ export default function ActaExamenExtraordinario() {
                 placeholder={
                   loading
                     ? "Cargando alumnos..."
-                    : "Busca por nombre o matricula"
+                    : "Busca por nombre o matrícula"
                 }
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                className={`${inputClass} disabled:bg-slate-100`}
               />
 
               {mostrarOpciones && (
@@ -485,10 +592,11 @@ export default function ActaExamenExtraordinario() {
                   Fecha
                 </span>
                 <input
+                  type="date"
                   name="fecha"
                   value={form.fecha}
                   onChange={handleChange}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className={inputClass}
                 />
               </label>
 
@@ -500,13 +608,13 @@ export default function ActaExamenExtraordinario() {
                   name="periodo"
                   value={form.periodo}
                   onChange={handleChange}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className={inputClass}
                 />
               </label>
             </div>
 
             {[
-              ["direccionEscuela", "Direccion de la escuela"],
+              ["direccionEscuela", "Dirección de la escuela"],
               ["nombreAlumno", "Nombre del alumno"],
               ["licenciatura", "Licenciatura"],
               ["materia", "Materia"],
@@ -520,14 +628,14 @@ export default function ActaExamenExtraordinario() {
                   name={name}
                   value={form[name]}
                   onChange={handleChange}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className={inputClass}
                 />
               </label>
             ))}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {[
-                ["matricula", "Matricula"],
+                ["matricula", "Matrícula"],
                 ["cuatrimestre", "Cuatrimestre"],
                 ["grupo", "Grupo"],
               ].map(([name, label]) => (
@@ -539,7 +647,7 @@ export default function ActaExamenExtraordinario() {
                     name={name}
                     value={form[name]}
                     onChange={handleChange}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className={inputClass}
                   />
                 </label>
               ))}
@@ -548,25 +656,29 @@ export default function ActaExamenExtraordinario() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">
-                  Calificacion letra
+                  Calificación con número
                 </span>
                 <input
-                  name="calificacionLetra"
-                  value={form.calificacionLetra}
-                  onChange={handleChange}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  name="calificacionNumero"
+                  value={form.calificacionNumero}
+                  onChange={handleCalificacionNumeroChange}
+                  className={inputClass}
                 />
               </label>
 
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">
-                  Calificacion numero
+                  Calificación con letra
                 </span>
                 <input
-                  name="calificacionNumero"
-                  value={form.calificacionNumero}
+                  name="calificacionLetra"
+                  value={form.calificacionLetra}
                   onChange={handleChange}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className={inputClass}
                 />
               </label>
             </div>
@@ -604,27 +716,26 @@ export default function ActaExamenExtraordinario() {
 
             <main className="acta-cuerpo">
               <div className="acta-row">
-                <span className="acta-label">DIRECCION DE LA ESCUELA:</span>
+                <span className="acta-label">DIRECCIÓN DE LA ESCUELA:</span>
                 <span className="acta-linea acta-linea-full">
                   {lineValue(form.direccionEscuela)}
                 </span>
               </div>
 
               <p className="acta-atencion">
-                ATENCION: DEPARTAMENTO DE CONTROL ESCOLAR
+                ATENCIÓN: DEPARTAMENTO DE CONTROL ESCOLAR
               </p>
 
-              <div className="acta-row">
+              <div className="acta-row acta-row-tight">
                 <span className="acta-label">
-                  Por medio de la presente, le informo que el alumno (a)
-                </span>
-                <span className="acta-linea acta-linea-nombre">
-                  {lineValue(form.nombreAlumno)}
+                  Por medio de la presente, le informo que el alumno (a):
                 </span>
               </div>
 
               <div className="acta-row">
-                <span className="acta-linea acta-linea-full" />
+                <span className="acta-linea acta-linea-full">
+                  {lineValue(form.nombreAlumno).toUpperCase()}
+                </span>
               </div>
 
               <div className="acta-row">
@@ -635,7 +746,7 @@ export default function ActaExamenExtraordinario() {
               </div>
 
               <div className="acta-row">
-                <span className="acta-label">Matricula:</span>
+                <span className="acta-label">Matrícula:</span>
                 <span className="acta-linea acta-linea-corta">
                   {lineValue(form.matricula)}
                 </span>
@@ -650,13 +761,9 @@ export default function ActaExamenExtraordinario() {
               </div>
 
               <div className="acta-row">
-                <span className="acta-label">Presento</span>
-                <span className="acta-label">Examen</span>
-                <span className="acta-label">Extraordinario</span>
-                <span className="acta-label">de</span>
-                <span className="acta-label">la</span>
-                <span className="acta-label">materia</span>
-                <span className="acta-label">de:</span>
+                <span className="acta-label">
+                  Presentó examen extraordinario de la materia de:
+                </span>
               </div>
 
               <div className="acta-row">
@@ -669,27 +776,32 @@ export default function ActaExamenExtraordinario() {
                 </span>
               </div>
 
-              <div className="acta-row acta-row-tight">
-                <span className="acta-label">Obteniendo la calificacion</span>
-                <span className="acta-linea acta-linea-full">
-                  {lineValue(form.calificacionLetra)}
-                </span>
-                <span className="acta-label">(</span>
-                <span className="acta-linea acta-linea-corta">
-                  {lineValue(form.calificacionNumero)}
-                </span>
-                <span className="acta-label">)</span>
-              </div>
+              <div className="acta-row acta-row-leyenda">
+                <span className="acta-label">Obteniendo la calificación</span>
 
-              <div className="acta-sublinea">
-                <span>LETRA</span>
-                <span>NUMERO</span>
+                <span className="acta-campo acta-campo-full">
+                  <span className="acta-linea">
+                    {lineValue(form.calificacionLetra)}
+                  </span>
+                  <span className="acta-campo-leyenda">LETRA</span>
+                </span>
+
+                <span className="acta-label">(</span>
+
+                <span className="acta-campo">
+                  <span className="acta-linea acta-linea-corta">
+                    {lineValue(form.calificacionNumero)}
+                  </span>
+                  <span className="acta-campo-leyenda">NÚMERO</span>
+                </span>
+
+                <span className="acta-label">)</span>
               </div>
 
               <p className="acta-aviso">
                 Se informa lo anterior, para todos los efectos legales a que
-                haya lugar, con fundamento en los articulos 115 al 119, 121 y
-                demas relativos del Reglamento Institucional
+                haya lugar, con fundamento en los artículos 115 al 119, 121 y
+                demás relativos del Reglamento Institucional.
               </p>
 
               <section className="acta-firmas">
@@ -700,7 +812,7 @@ export default function ActaExamenExtraordinario() {
 
                 <div className="acta-firma">
                   <div className="acta-firma-linea" />
-                  <p>Nombre y Firma del alumno</p>
+                  <p>Nombre y firma del alumno</p>
                 </div>
 
                 <div className="acta-firma">
@@ -709,7 +821,7 @@ export default function ActaExamenExtraordinario() {
                 </div>
               </section>
 
-              <p className="acta-copias">c.c.p Archivo</p>
+              <p className="acta-copias">c.c.p. Archivo</p>
             </main>
           </article>
         </section>
