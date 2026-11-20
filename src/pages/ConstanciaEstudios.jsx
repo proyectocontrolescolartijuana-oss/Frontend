@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Download, FileText } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Download, FileText, ImagePlus, X } from "lucide-react";
 import logoUnifront from "../assets/UnifrontLogoAzul.png";
 import { obtenerAlumnosDetalle } from "../services/usuariosService";
 
@@ -31,6 +31,12 @@ const SEXOS = [
   ["mujer", "Mujer"],
 ];
 
+// Solo dos formatos de constancia
+const FORMATOS = [
+  ["sin_foto", "Sin fotografía"],
+  ["con_foto", "Con fotografía"],
+];
+
 const TEXTOS_POR_SEXO = {
   hombre: {
     alumno: "el alumno",
@@ -46,10 +52,11 @@ const TEXTOS_POR_SEXO = {
 
 const MAX_OPCIONES = 50;
 
+const TIPOS_IMAGEN = ["image/jpeg", "image/png", "image/webp"];
+const MAX_FOTO_MB = 5;
+
 const INPUT_CLASS =
   "mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100";
-
-
 
 // Fecha local en formato YYYY-MM-DD (toISOString usa UTC y puede adelantar el día).
 const hoyLocal = () => {
@@ -60,6 +67,7 @@ const hoyLocal = () => {
 };
 
 const crearFormInicial = () => ({
+  formato: "sin_foto",
   sexo: "hombre",
   nombreAlumno: "",
   matricula: "",
@@ -114,13 +122,6 @@ const formatDate = (value) => {
 
 const conPlaceholder = (valor, placeholder) => valor?.trim() || placeholder;
 
-
-const nombreArchivo = ({ matricula, fechaEmision }) => {
-  const matriculaLimpia = matricula.trim().replace(/[^\w-]/g, "") || "SIN_MATRICULA";
-
-  return `CE_${matriculaLimpia}_${fechaEmision || hoyLocal()}`;
-};
-
 // Quita acentos y caracteres no válidos para nombres de archivo; espacios -> "_".
 const limpiarParaArchivo = (texto = "") =>
   texto
@@ -130,12 +131,15 @@ const limpiarParaArchivo = (texto = "") =>
     .trim()
     .replace(/\s+/g, "_");
 
-// Constancia_Estudios_{matricula}_{nombre_completo} (el navegador agrega .pdf)//NO FUNCIONA AHORITA
+// Constancia_Estudios_{matricula}_{nombre_completo} (el navegador agrega .pdf)
 const crearNombreArchivo = ({ matricula, nombreAlumno }) =>
-  ["Constancia_Estudios", limpiarParaArchivo(matricula), limpiarParaArchivo(nombreAlumno)]
+  [
+    "Constancia_Estudios",
+    limpiarParaArchivo(matricula),
+    limpiarParaArchivo(nombreAlumno),
+  ]
     .filter(Boolean)
     .join("_");
-
 
 /* ========================================================================
  * Estilos del documento (prefijo cd- para evitar choques con otros estilos)
@@ -171,27 +175,6 @@ const ESTILOS = `
     position: relative;
     min-height: 2.65in;
   }
-
-  .cd-lineas {
-    position: absolute;
-    inset: -0.48in -0.58in auto -0.61in;
-    height: 2.85in;
-    overflow: hidden;
-    z-index: 0;
-  }
-
-  .cd-linea {
-    position: absolute;
-    height: 1px;
-    background: #245d69;
-    transform-origin: left center;
-  }
-
-  .cd-linea-1 { left: 0.1in;  top: 2.18in; width: 8.4in;  transform: rotate(-11deg); }
-  .cd-linea-2 { left: 2in;    top: 0.1in;  width: 2.2in;  transform: rotate(34deg); }
-  .cd-linea-3 { left: 4.65in; top: 0.04in; width: 2.55in; transform: rotate(34deg); }
-  .cd-linea-4 { left: 5.1in;  top: 0;      width: 1.8in;  transform: rotate(89deg); }
-  .cd-linea-5 { left: 6.35in; top: 1.35in; width: 2.15in; transform: rotate(-21deg); }
 
   .cd-marca {
     position: relative;
@@ -241,6 +224,50 @@ const ESTILOS = `
 
   .cd-meta p {
     margin: 0;
+  }
+
+  /* Fotografía (solo en el formato "con fotografía"):
+     va debajo del logo y encima de "A QUIEN CORRESPONDA".
+     El resto del diseño conserva sus posiciones originales. */
+  .cd-hoja--foto .cd-marca {
+    padding-top: 1.2in;   /* mismo punto donde estaba el logo */
+    padding-bottom: 0.18in;
+  }
+
+  .cd-hoja--foto .cd-logo {
+    position: static;
+    display: block;
+  }
+
+  /* Espacio entre "A QUIEN CORRESPONDA" y el párrafo siguiente */
+  .cd-hoja--foto .cd-cuerpo > .cd-destinatario {
+    margin-bottom: 0.3in;
+  }
+
+  .cd-foto {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5cm;   /* tamaño infantil: 2.5 x 3 cm */
+    height: 3cm;
+    margin-top: 0.22in;   /* espacio entre el logo y la foto */
+    border: 1.5px solid #222;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .cd-foto img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .cd-foto-vacia {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    color: #777;
+    text-align: center;
   }
 
   /* Cuerpo */
@@ -382,6 +409,11 @@ const ESTILOS = `
       box-shadow: none;
     }
 
+    /* El texto "Fotografía" del recuadro vacío no se imprime */
+    .cd-foto-vacia {
+      display: none;
+    }
+
     @page {
       size: letter;
       margin: 0;
@@ -399,6 +431,175 @@ function Field({ label, ...inputProps }) {
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <input className={INPUT_CLASS} {...inputProps} />
     </label>
+  );
+}
+
+// Selector de dos o más opciones tipo "pastilla" (radio accesible)
+function Segmented({ legend, name, options, value, onChange }) {
+  return (
+    <fieldset>
+      <legend className="text-sm font-medium text-slate-700">{legend}</legend>
+
+      <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
+        {options.map(([optionValue, label]) => (
+          <label
+            key={optionValue}
+            className={`cursor-pointer rounded-lg px-3 py-2 text-center text-sm font-semibold transition focus-within:ring-2 focus-within:ring-blue-300 ${
+              value === optionValue
+                ? "bg-white text-blue-700 shadow-sm"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={optionValue}
+              checked={value === optionValue}
+              onChange={onChange}
+              className="sr-only"
+            />
+            {label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+// Zona para elegir la foto desde la computadora o arrastrarla
+function FotoDropzone({ fotoUrl, fotoNombre, onFoto, onQuitar }) {
+  const [arrastrando, setArrastrando] = useState(false);
+  const [error, setError] = useState("");
+
+  const procesarArchivo = (archivo) => {
+    if (!archivo) return;
+
+    if (!TIPOS_IMAGEN.includes(archivo.type)) {
+      setError("Usa una imagen JPG, PNG o WEBP.");
+      return;
+    }
+
+    if (archivo.size > MAX_FOTO_MB * 1024 * 1024) {
+      setError(`La imagen no debe pesar más de ${MAX_FOTO_MB} MB.`);
+      return;
+    }
+
+    setError("");
+    onFoto(archivo);
+  };
+
+  const handleInputChange = (event) => {
+    procesarArchivo(event.target.files?.[0]);
+    // Permite volver a elegir el mismo archivo después de quitarlo
+    event.target.value = "";
+  };
+
+  const handleDrop = async (event) => {
+    event.preventDefault();
+    setArrastrando(false);
+
+    // Archivo arrastrado desde el explorador de archivos
+    const archivo = event.dataTransfer.files?.[0];
+    if (archivo) {
+      procesarArchivo(archivo);
+      return;
+    }
+
+    // Imagen arrastrada desde otra página o pestaña
+    const url =
+      event.dataTransfer.getData("text/uri-list") ||
+      event.dataTransfer.getData("text/plain");
+
+    if (!/^https?:\/\//i.test(url)) {
+      setError("No se reconoció la imagen. Descárgala y súbela desde tu computadora.");
+      return;
+    }
+
+    try {
+      const respuesta = await fetch(url);
+      const blob = await respuesta.blob();
+      procesarArchivo(new File([blob], "foto", { type: blob.type }));
+    } catch (fetchError) {
+      console.error(fetchError);
+      setError(
+        "Ese sitio no permite usar la imagen. Descárgala y selecciónala desde tu computadora.",
+      );
+    }
+  };
+
+  return (
+    <div>
+      <span className="text-sm font-medium text-slate-700">
+        Fotografía del alumno
+      </span>
+
+      <label
+        onDragOver={(event) => {
+          event.preventDefault();
+          setArrastrando(true);
+        }}
+        onDragLeave={(event) => {
+          if (event.currentTarget.contains(event.relatedTarget)) return;
+          setArrastrando(false);
+        }}
+        onDrop={handleDrop}
+        className={`mt-1 flex cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed p-3 transition focus-within:ring-2 focus-within:ring-blue-100 ${
+          arrastrando
+            ? "border-blue-500 bg-blue-50"
+            : "border-slate-300 bg-slate-50 hover:border-blue-400"
+        }`}
+      >
+        <input
+          type="file"
+          accept={TIPOS_IMAGEN.join(",")}
+          onChange={handleInputChange}
+          className="sr-only"
+        />
+
+        <div className="flex h-20 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-400">
+          {fotoUrl ? (
+            <img
+              src={fotoUrl}
+              alt="Vista previa de la fotografía"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <ImagePlus size={22} />
+          )}
+        </div>
+
+        <div className="min-w-0 text-sm">
+          <p className="font-semibold text-slate-700">
+            {fotoUrl ? "Cambiar fotografía" : "Elegir o arrastrar fotografía"}
+          </p>
+          <p className="mt-0.5 truncate text-slate-500">
+            {fotoUrl
+              ? fotoNombre
+              : `JPG, PNG o WEBP, hasta ${MAX_FOTO_MB} MB`}
+          </p>
+        </div>
+      </label>
+
+      {fotoUrl && (
+        <button
+          type="button"
+          onClick={() => {
+            setError("");
+            onQuitar();
+          }}
+          className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-700"
+        >
+          <X size={14} />
+          Quitar fotografía
+        </button>
+      )}
+
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-red-600">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -522,8 +723,9 @@ function AlumnoSelect({ alumnos, loading, value, onTextChange, onSelect }) {
   );
 }
 
-function ConstanciaPreview({ form }) {
+function ConstanciaPreview({ form, fotoUrl }) {
   const textos = TEXTOS_POR_SEXO[form.sexo];
+  const conFoto = form.formato === "con_foto";
 
   const nombreAlumno = conPlaceholder(
     form.nombreAlumno,
@@ -538,18 +740,25 @@ function ConstanciaPreview({ form }) {
     : "";
 
   return (
-    <article id="constancia-preview" className="cd-hoja mx-auto shadow-sm">
+    <article
+      id="constancia-preview"
+      className={`cd-hoja mx-auto shadow-sm ${conFoto ? "cd-hoja--foto" : ""}`}
+    >
       <div className="cd-borde" />
 
       <header className="cd-encabezado">
-        <div className="cd-lineas" aria-hidden="true">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <span key={n} className={`cd-linea cd-linea-${n}`} />
-          ))}
-        </div>
-
         <div className="cd-marca">
           <img className="cd-logo" src={logoUnifront} alt="UNIFRONT" />
+
+          {conFoto && (
+            <div className="cd-foto">
+              {fotoUrl ? (
+                <img src={fotoUrl} alt="Fotografía del alumno" />
+              ) : (
+                <span className="cd-foto-vacia">Fotografía</span>
+              )}
+            </div>
+          )}
 
           <div className="cd-institucion">
             <p className="cd-institucion-nombre">{INSTITUCION.nombre}</p>
@@ -635,6 +844,8 @@ export default function ConstanciaEstudios() {
   const [alumnos, setAlumnos] = useState([]);
   const [loadingAlumnos, setLoadingAlumnos] = useState(true);
   const [errorAlumnos, setErrorAlumnos] = useState("");
+  const [foto, setFoto] = useState(null); // { url, nombre } | null
+  const fotoUrlRef = useRef(null);
 
   useEffect(() => {
     let activo = true;
@@ -660,6 +871,29 @@ export default function ConstanciaEstudios() {
     };
   }, []);
 
+  // Libera la URL temporal de la foto al salir de la página
+  useEffect(
+    () => () => {
+      if (fotoUrlRef.current) URL.revokeObjectURL(fotoUrlRef.current);
+    },
+    [],
+  );
+
+  const handleFoto = (archivo) => {
+    if (fotoUrlRef.current) URL.revokeObjectURL(fotoUrlRef.current);
+
+    const url = URL.createObjectURL(archivo);
+    fotoUrlRef.current = url;
+    setFoto({ url, nombre: archivo.name });
+  };
+
+  const handleQuitarFoto = () => {
+    if (fotoUrlRef.current) URL.revokeObjectURL(fotoUrlRef.current);
+
+    fotoUrlRef.current = null;
+    setFoto(null);
+  };
+
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -667,6 +901,9 @@ export default function ConstanciaEstudios() {
   };
 
   const handleAlumnoSelect = (alumno) => {
+    // Evita que la foto de un alumno quede en la constancia de otro
+    handleQuitarFoto();
+
     setForm((actual) => ({
       ...actual,
       sexo: detectarSexo(alumno.sexo) ?? actual.sexo,
@@ -683,13 +920,11 @@ export default function ConstanciaEstudios() {
     setForm((actual) => ({ ...actual, nombreAlumno }));
   };
 
-  // El navegador propone document.title como nombre del PDF al guardar. //AUN NO FUNCIONA
+  // El navegador propone document.title como nombre del PDF al guardar.
   const handleImprimir = () => {
-    
     const tituloOriginal = document.title;
 
-    const nombrePDF = crearNombreArchivo(form);
-    document.title = nombrePDF;
+    document.title = crearNombreArchivo(form);
 
     const restaurarTitulo = () => {
       document.title = tituloOriginal;
@@ -705,11 +940,11 @@ export default function ConstanciaEstudios() {
   // Props comunes de cada campo controlado
   const campo = (name) => ({ name, value: form[name], onChange: handleChange });
 
+  const conFoto = form.formato === "con_foto";
+
   return (
     <div className="space-y-6 p-6">
-
       <style>{ESTILOS}</style>
-
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex items-center gap-3">
@@ -756,34 +991,30 @@ export default function ConstanciaEstudios() {
               </div>
             )}
 
-            <fieldset>
-              <legend className="text-sm font-medium text-slate-700">
-                Sexo del alumno
-              </legend>
+            <Segmented
+              legend="Formato de la constancia"
+              name="formato"
+              options={FORMATOS}
+              value={form.formato}
+              onChange={handleChange}
+            />
 
-              <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
-                {SEXOS.map(([value, label]) => (
-                  <label
-                    key={value}
-                    className={`cursor-pointer rounded-lg px-3 py-2 text-center text-sm font-semibold transition ${
-                      form.sexo === value
-                        ? "bg-white text-blue-700 shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="sexo"
-                      value={value}
-                      checked={form.sexo === value}
-                      onChange={handleChange}
-                      className="sr-only"
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
+            {conFoto && (
+              <FotoDropzone
+                fotoUrl={foto?.url}
+                fotoNombre={foto?.nombre}
+                onFoto={handleFoto}
+                onQuitar={handleQuitarFoto}
+              />
+            )}
+
+            <Segmented
+              legend="Sexo del alumno"
+              name="sexo"
+              options={SEXOS}
+              value={form.sexo}
+              onChange={handleChange}
+            />
 
             <AlumnoSelect
               alumnos={alumnos}
@@ -845,7 +1076,7 @@ export default function ConstanciaEstudios() {
         </section>
 
         <div className="overflow-auto rounded-2xl border border-slate-200 bg-slate-100 p-4 shadow-sm">
-          <ConstanciaPreview form={form} />
+          <ConstanciaPreview form={form} fotoUrl={foto?.url} />
         </div>
       </div>
     </div>
