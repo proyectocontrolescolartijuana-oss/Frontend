@@ -12,9 +12,13 @@ import {
   obtenerCapturaGrupo,
   obtenerGruposCaptura,
 } from "../services/calificacionesService";
+import DesgloseParcial from "../components/desgloseParcial/DesgloseParcial";
 import { nombreAlumnoApellidosPrimero } from "../utils/nombres";
 
 const getCellKey = (idCarga, idParcial) => `${idCarga}-${idParcial}`;
+
+const getLlaveDesglose = (grupoMateriaId, idParcial) =>
+  `${grupoMateriaId}-${idParcial}`;
 
 const obtenerMensajeError = (error) => {
   const detail = error.response?.data?.detail;
@@ -73,6 +77,11 @@ export default function CapturaCalificacionesPage() {
   const [saving, setSaving] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
+  const [vistaActiva, setVistaActiva] = useState({
+    grupoId: "",
+    vista: "resumen",
+  });
+  const [parcialesConDesglose, setParcialesConDesglose] = useState({});
 
   const cargarGrupos = async () => {
     setError("");
@@ -162,6 +171,8 @@ export default function CapturaCalificacionesPage() {
         console.error(requestError);
 
         if (activo) {
+          setCaptura(null);
+          setFormValues({});
           setError(obtenerMensajeError(requestError));
         }
       })
@@ -198,6 +209,48 @@ export default function CapturaCalificacionesPage() {
     }));
   };
 
+  const vista =
+    String(vistaActiva.grupoId) === String(grupoSeleccionadoId)
+      ? vistaActiva.vista
+      : "resumen";
+
+  const cambiarVista = (nuevaVista) => {
+    setVistaActiva({ grupoId: grupoSeleccionadoId, vista: nuevaVista });
+  };
+
+  // El backend dice que parciales admiten desglose segun la modalidad.
+  const evaluacionUnica = Boolean(captura?.evaluacion_unica);
+  const parcialesConPestana = (captura?.parciales || []).filter((parcial) =>
+    (captura?.parciales_desglosables || []).includes(parcial.id_parcial),
+  );
+  const parcialDesglose =
+    vista === "resumen"
+      ? null
+      : parcialesConPestana.find(
+          (parcial) => String(parcial.id_parcial) === vista,
+        ) || null;
+
+  const handleDesgloseGuardado = (idParcial, cpfPorCarga) => {
+    setParcialesConDesglose((prev) => ({
+      ...prev,
+      [getLlaveDesglose(grupoSeleccionadoId, idParcial)]: true,
+    }));
+
+    setFormValues((prev) => {
+      const siguiente = { ...prev };
+
+      Object.entries(cpfPorCarga).forEach(([idCarga, cpf]) => {
+        if (cpf !== null && cpf !== undefined) {
+          siguiente[getCellKey(idCarga, idParcial)] = cpf;
+        }
+      });
+
+      return siguiente;
+    });
+  };
+
+  // Vista previa mientras se captura (solo modalidad cuatrimestral). El valor
+  // oficial lo calcula el backend al guardar.
   const calcularPromedio = (alumno) => {
     if (!captura?.parciales?.length) return "-";
 
@@ -460,7 +513,7 @@ export default function CapturaCalificacionesPage() {
                 <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-slate-500">
-                      Parciales
+                      {evaluacionUnica ? "Evaluacion" : "Parciales"}
                     </p>
                     <ClipboardCheck size={18} className="text-blue-600" />
                   </div>
@@ -493,18 +546,59 @@ export default function CapturaCalificacionesPage() {
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleGuardar}
-                    disabled={saving || captura.alumnos.length === 0}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <Save size={18} />
-                    {saving ? "Guardando..." : "Guardar captura"}
-                  </button>
+                  {vista === "resumen" && (
+                    <button
+                      type="button"
+                      onClick={handleGuardar}
+                      disabled={saving || captura.alumnos.length === 0}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Save size={18} />
+                      {saving ? "Guardando..." : "Guardar captura"}
+                    </button>
+                  )}
                 </div>
 
-                {captura.alumnos.length === 0 ? (
+                {parcialesConPestana.length > 0 && (
+                <div
+                  role="tablist"
+                  aria-label="Vista de captura"
+                  className="flex flex-wrap gap-1 border-b border-slate-200 px-5"
+                >
+                  {[
+                    { id: "resumen", etiqueta: "Resumen" },
+                    ...parcialesConPestana.map((parcial) => ({
+                      id: String(parcial.id_parcial),
+                      etiqueta: parcial.nombre,
+                    })),
+                  ].map((pestana) => (
+                    <button
+                      key={pestana.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={vista === pestana.id}
+                      onClick={() => cambiarVista(pestana.id)}
+                      className={`-mb-px border-b-2 px-4 py-3 text-sm font-semibold transition ${
+                        vista === pestana.id
+                          ? "border-blue-600 text-blue-700"
+                          : "border-transparent text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      {pestana.etiqueta}
+                    </button>
+                  ))}
+                </div>
+                )}
+
+                {parcialDesglose ? (
+                  <DesgloseParcial
+                    key={`${grupoSeleccionadoId}-${parcialDesglose.id_parcial}`}
+                    grupoMateriaId={grupoSeleccionadoId}
+                    parcial={parcialDesglose}
+                    alumnos={captura.alumnos}
+                    onGuardado={handleDesgloseGuardado}
+                  />
+                ) : captura.alumnos.length === 0 ? (
                   <div className="px-5 py-12 text-center text-sm text-slate-500">
                     Este grupo aun no tiene alumnos en carga academica.
                   </div>
@@ -527,22 +621,28 @@ export default function CapturaCalificacionesPage() {
                               <span className="block whitespace-nowrap">
                                 {parcial.nombre}
                               </span>
-                              <span className="text-xs font-medium text-slate-400">
-                                {parcial.porcentaje}%
-                              </span>
+                              {!evaluacionUnica && (
+                                <span className="text-xs font-medium text-slate-400">
+                                  {parcial.porcentaje}%
+                                </span>
+                              )}
                             </th>
                           ))}
-                          <th className="px-5 py-4 text-center text-sm font-semibold text-slate-600">
-                            <span className="block whitespace-nowrap">
-                              Prom. 1er y 2do
-                            </span>
-                            <span className="text-xs font-medium text-slate-400">
-                              Parcial
-                            </span>
-                          </th>
-                          <th className="px-5 py-4 text-center text-sm font-semibold text-slate-600">
-                            Promedio
-                          </th>
+                          {!evaluacionUnica && (
+                            <>
+                              <th className="px-5 py-4 text-center text-sm font-semibold text-slate-600">
+                                <span className="block whitespace-nowrap">
+                                  Prom. 1er y 2do
+                                </span>
+                                <span className="text-xs font-medium text-slate-400">
+                                  Parcial
+                                </span>
+                              </th>
+                              <th className="px-5 py-4 text-center text-sm font-semibold text-slate-600">
+                                Promedio
+                              </th>
+                            </>
+                          )}
                         </tr>
                       </thead>
 
@@ -565,6 +665,18 @@ export default function CapturaCalificacionesPage() {
                               {alumno.alumno?.matricula || "Sin matricula"}
                             </td>
                             {captura.parciales.map((parcial) => {
+                              const soloLectura =
+                                Boolean(
+                                  parcialesConDesglose[
+                                    getLlaveDesglose(
+                                      grupoSeleccionadoId,
+                                      parcial.id_parcial,
+                                    )
+                                  ],
+                                ) ||
+                                (captura.parciales_con_desglose || []).includes(
+                                  parcial.id_parcial,
+                                );
                               const key = getCellKey(
                                 alumno.id_carga,
                                 parcial.id_parcial,
@@ -581,10 +693,11 @@ export default function CapturaCalificacionesPage() {
                                     max="100"
                                     step="1"
                                     value={formValues[key] ?? ""}
+                                    readOnly={soloLectura}
                                     onChange={(event) => {
                                       let value = event.target.value;
 
-                                      // Permitir vacío para borrar el campo
+                                      
                                       if (value === "") {
                                         handleChangeCalificacion(
                                           alumno.id_carga,
@@ -594,13 +707,13 @@ export default function CapturaCalificacionesPage() {
                                         return;
                                       }
 
-                                      // Convertir a entero
+                                      
                                       value = parseInt(value, 10);
 
-                                      // Evitar NaN
+                                      
                                       if (isNaN(value)) return;
 
-                                      // Limitar entre 0 y 100
+                                      
                                       if (value < 0) value = 0;
                                       if (value > 100) value = 100;
 
@@ -611,7 +724,7 @@ export default function CapturaCalificacionesPage() {
                                       );
                                     }}
                                     onKeyDown={(e) => {
-                                      // Bloquear caracteres para decimales
+                                      
                                       if (
                                         e.key === "." ||
                                         e.key === "," ||
@@ -627,19 +740,27 @@ export default function CapturaCalificacionesPage() {
                                       alumno,
                                       "alumno",
                                     )}`}
-                                    className="h-10 w-24 rounded-md border border-slate-300 px-3 text-center text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                    className={`h-10 w-24 rounded-md border px-3 text-center text-sm font-semibold outline-none transition ${
+                                      soloLectura
+                                        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
+                                        : "border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                    }`}
                                   />
                                 </td>
                               );
                             })}
 
-                            <td className="px-5 py-4 text-center text-sm font-bold text-blue-700">
-                              {calcularPromedioPrimerosParciales(alumno)}
-                            </td>
+                            {!evaluacionUnica && (
+                              <>
+                                <td className="px-5 py-4 text-center text-sm font-bold text-blue-700">
+                                  {calcularPromedioPrimerosParciales(alumno)}
+                                </td>
 
-                            <td className="px-5 py-4 text-center text-sm font-bold text-slate-900">
-                              {calcularPromedio(alumno)}
-                            </td>
+                                <td className="px-5 py-4 text-center text-sm font-bold text-slate-900">
+                                  {calcularPromedio(alumno)}
+                                </td>
+                              </>
+                            )}
                           </tr>
                         ))}
                       </tbody>

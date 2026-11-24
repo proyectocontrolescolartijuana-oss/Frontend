@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import {
   AlertCircle,
   BookOpen,
   CalendarCheck,
   CheckCircle2,
+  Clock,
   Download,
   RefreshCw,
   Save,
@@ -22,6 +24,7 @@ import {
   nombreApellidosPrimero,
 } from "../utils/nombres";
 import { formatDateDDMMYYYY } from "../utils/fechas";
+import { obtenerDesgloseParcial } from "../services/desgloseService";
 
 const getCellKey = (idCarga, fecha) => `${idCarga}-${fecha}`;
 
@@ -64,9 +67,8 @@ const extraerValores = (captura) => {
 
   captura.alumnos?.forEach((alumno) => {
     alumno.asistencias?.forEach((asistencia) => {
-      valores[getCellKey(alumno.id_carga, asistencia.fecha)] = Boolean(
-        asistencia.asistencia,
-      );
+      valores[getCellKey(alumno.id_carga, asistencia.fecha)] =
+        getEstadoDesdeRegistro(asistencia);
     });
   });
 
@@ -95,21 +97,75 @@ const formatPorcentaje = (value) => {
   return `${Number(value).toFixed(1)}%`;
 };
 
-const calcularPromedioAlumno = (alumno, fechas, valores) => {
-  if (!fechas.length) return null;
+// --- ASISTENCIA CON RETARDO -------------------------------------------------
+const ESTADO_PRESENTE = "presente";
+const ESTADO_RETARDO = "retardo";
+const ESTADO_FALTA = "falta";
 
-  const asistencias = fechas.reduce((total, fecha) => {
-    return total + (valores[getCellKey(alumno.id_carga, fecha)] ? 1 : 0);
-  }, 0);
-
-  return (asistencias / fechas.length) * 100;
+const ETIQUETAS_ESTADO = {
+  [ESTADO_PRESENTE]: "Presente",
+  [ESTADO_RETARDO]: "Retardo",
+  [ESTADO_FALTA]: "Falta",
 };
 
+const getEstadoAsistencia = (valor) => {
+  return valor === ESTADO_PRESENTE || valor === ESTADO_RETARDO
+    ? valor
+    : ESTADO_FALTA;
+};
+
+// Un retardo es una asistencia: el alumno si estuvo en clase.
+const asistio = (valor) => getEstadoAsistencia(valor) !== ESTADO_FALTA;
+
+const getEstadoDesdeRegistro = (registro) => {
+  if (!registro?.asistencia) return ESTADO_FALTA;
+
+  return registro.retardo ? ESTADO_RETARDO : ESTADO_PRESENTE;
+};
+
+const getSiguienteEstado = (valor) => {
+  const estado = getEstadoAsistencia(valor);
+
+  if (estado === ESTADO_PRESENTE) return ESTADO_RETARDO;
+  if (estado === ESTADO_RETARDO) return ESTADO_FALTA;
+
+  return ESTADO_PRESENTE;
+};
+
+// Incluye los retardos.
 const contarAsistencias = (alumno, fechas, valores) => {
   return fechas.reduce((total, fecha) => {
-    return total + (valores[getCellKey(alumno.id_carga, fecha)] ? 1 : 0);
+    return total + (asistio(valores[getCellKey(alumno.id_carga, fecha)]) ? 1 : 0);
   }, 0);
 };
+
+const contarRetardos = (alumno, fechas, valores) => {
+  return fechas.reduce((total, fecha) => {
+    const estado = valores[getCellKey(alumno.id_carga, fecha)];
+
+    return total + (estado === ESTADO_RETARDO ? 1 : 0);
+  }, 0);
+};
+
+// retardosPorFalta lo define el backend: null = el retardo cuenta como
+// asistencia; 1 = cuenta como falta; N = cada N retardos son una falta.
+const calcularPromedioAlumno = (
+  alumno,
+  fechas,
+  valores,
+  retardosPorFalta = null,
+) => {
+  if (!fechas.length) return null;
+
+  const asistencias = contarAsistencias(alumno, fechas, valores);
+  const retardos = contarRetardos(alumno, fechas, valores);
+  const efectivas = retardosPorFalta
+    ? Math.max(0, asistencias - Math.floor(retardos / retardosPorFalta))
+    : asistencias;
+
+  return (efectivas / fechas.length) * 100;
+};
+// --- FIN ASISTENCIA CON RETARDO ---------------------------------------------
 
 const getAlumnoNombre = (alumno) => {
   return nombreAlumnoApellidosPrimero(alumno);
@@ -140,7 +196,14 @@ const getCuatrimestreTexto = (grupoMateria) => {
   return match ? `Cuatrimestre ${match[0]}` : "";
 };
 
+// Modalidad con una sola evaluacion (sabatina): no hay parciales que mostrar.
+const tieneEvaluacionUnica = (captura) => captura?.parciales?.length === 1;
+
 const getPeriodoTexto = (captura) => {
+  if (tieneEvaluacionUnica(captura)) {
+    return captura?.grupo_materia?.periodo?.nombre || "";
+  }
+
   const parcial = captura?.parciales?.find(
     (item) => item.id_parcial === captura.parcial_seleccionado_id,
   );
@@ -151,7 +214,11 @@ const getPeriodoTexto = (captura) => {
 const getAsistenciaPdfMark = (mode, alumno, fecha, valores) => {
   if (mode !== "capturada") return "";
 
-  return valores[getCellKey(alumno.id_carga, fecha)] ? "." : "/";
+  const estado = valores[getCellKey(alumno.id_carga, fecha)];
+
+  if (estado === ESTADO_RETARDO) return "x";
+
+  return asistio(estado) ? "." : "/";
 };
 
 const buildPdfRows = (alumnos) => {
@@ -172,6 +239,61 @@ const PDF_EMPTY_ATTENDANCE_KEYS = Array.from(
   (_, index) => `empty-attendance-${index + 1}`,
 );
 
+// --- DESGLOSE EN EL PDF -----------------------------------------------------
+const PDF_CLAVES_CRITERIOS = ["C1", "C2", "C3", "C4", "C5", "EPA"];
+const PDF_MINIMA_APROBATORIA = 70;
+
+const formatNumeroPdf = (valor) => {
+  if (valor === null || valor === undefined || valor === "") return "";
+
+  const numero = Number(valor);
+
+  if (Number.isNaN(numero)) return "";
+
+  return Number.isInteger(numero) ? String(numero) : numero.toFixed(1);
+};
+
+const getCriterioPdf = (desglose, clave) => {
+  return desglose?.criterios?.find((criterio) => criterio.clave === clave);
+};
+
+const criterioPdfActivo = (criterio) => {
+  return Number(criterio?.porcentaje) > 0 && Number(criterio?.puntos_max) > 0;
+};
+
+// Las actividades (C1 a C5) ocupan las primeras columnas azules y el examen,
+// la ultima, igual que en la hoja que llenan los docentes.
+const buildPdfActividades = (desglose) => {
+  const actividades = Array.from({ length: PDF_ACTIVITY_COLUMNS }, () => null);
+
+  if (!desglose) return actividades;
+
+  PDF_CLAVES_CRITERIOS.filter(
+    (clave) =>
+      clave !== "EPA" && criterioPdfActivo(getCriterioPdf(desglose, clave)),
+  ).forEach((clave, indice) => {
+    actividades[indice] = clave;
+  });
+
+  if (criterioPdfActivo(getCriterioPdf(desglose, "EPA"))) {
+    actividades[PDF_ACTIVITY_COLUMNS - 1] = "EPA";
+  }
+
+  return actividades;
+};
+
+const getPeriodoFechas = (captura) => {
+  const fechas = [...(captura?.fechas || [])].sort();
+
+  if (fechas.length === 0) return null;
+
+  return {
+    inicio: formatFecha(fechas[0]),
+    fin: formatFecha(fechas[fechas.length - 1]),
+  };
+};
+// --- FIN DESGLOSE EN EL PDF -------------------------------------------------
+
 export default function AsistenciaPage() {
   const [grupos, setGrupos] = useState([]);
   const [grupoSeleccionadoId, setGrupoSeleccionadoId] = useState("");
@@ -184,6 +306,7 @@ export default function AsistenciaPage() {
   const [loadingCaptura, setLoadingCaptura] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pdfMode, setPdfMode] = useState("vacio");
+  const [pdfDesglose, setPdfDesglose] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
   const { user } = useAuth();
@@ -285,6 +408,8 @@ export default function AsistenciaPage() {
         console.error(requestError);
 
         if (activo) {
+          setCaptura(null);
+          setFormValues({});
           setError(obtenerMensajeError(requestError));
         }
       })
@@ -309,7 +434,8 @@ export default function AsistenciaPage() {
     const totalClases = captura?.fechas?.length || 0;
     const presentesHoy =
       captura?.alumnos?.filter(
-        (alumno) => formValues[getCellKey(alumno.id_carga, fechaSeleccionada)],
+        (alumno) =>
+          asistio(formValues[getCellKey(alumno.id_carga, fechaSeleccionada)]),
       ).length || 0;
     const alumnosEnRiesgo =
       captura?.alumnos?.filter((alumno) => {
@@ -317,6 +443,7 @@ export default function AsistenciaPage() {
           alumno,
           captura?.fechas || [],
           formValues,
+          captura?.retardos_por_falta,
         );
 
         return promedio !== null && promedio < 80;
@@ -337,6 +464,27 @@ export default function AsistenciaPage() {
 
     return captura?.fechas || [];
   }, [captura?.fechas, pdfMode]);
+
+  const pdfDesgloseActual = pdfMode === "capturada" ? pdfDesglose : null;
+
+  const pdfActividades = useMemo(
+    () => buildPdfActividades(pdfDesgloseActual),
+    [pdfDesgloseActual],
+  );
+
+  const pdfDatosPorCarga = useMemo(
+    () =>
+      Object.fromEntries(
+        (pdfDesgloseActual?.alumnos || []).map((alumno) => [
+          alumno.id_carga,
+          alumno,
+        ]),
+      ),
+    [pdfDesgloseActual],
+  );
+
+  const pdfPeriodo =
+    pdfMode === "capturada" ? getPeriodoFechas(captura) : null;
 
   const handleChangeAsistencia = (idCarga, fecha, value) => {
     setFormValues((prev) => ({
@@ -383,7 +531,9 @@ export default function AsistenciaPage() {
       fechasGuardables.map((fecha) => ({
         id_carga: alumno.id_carga,
         fecha,
-        asistencia: Boolean(formValues[getCellKey(alumno.id_carga, fecha)]),
+        asistencia: asistio(formValues[getCellKey(alumno.id_carga, fecha)]),
+        retardo:
+          formValues[getCellKey(alumno.id_carga, fecha)] === ESTADO_RETARDO,
       })),
     );
 
@@ -408,12 +558,31 @@ export default function AsistenciaPage() {
     }
   };
 
-  const handleImprimirPdf = (mode) => {
+  const handleImprimirPdf = async (mode) => {
     if (!captura || captura.alumnos.length === 0) return;
+
+    let desglose = null;
+
+    if (mode === "capturada" && !tieneEvaluacionUnica(captura)) {
+      try {
+        desglose = await obtenerDesgloseParcial(
+          captura.grupo_materia.id_grupo_materia,
+          captura.parcial_seleccionado_id,
+        );
+      } catch (requestError) {
+        // Si no se puede leer el desglose, el PDF sale solo con la asistencia.
+        console.error(requestError);
+      }
+    }
 
     const tituloOriginal = document.title;
 
-    setPdfMode(mode);
+    // flushSync para que el documento este actualizado antes de imprimir.
+    flushSync(() => {
+      setPdfDesglose(desglose);
+      setPdfMode(mode);
+    });
+
     document.title = "asistencia";
 
     const restaurarTitulo = () => {
@@ -807,6 +976,21 @@ export default function AsistenciaPage() {
                         return;
                       }
 
+                      const grupoActual = grupos.find(
+                        (item) =>
+                          String(item.id_grupo_materia) ===
+                          String(grupoSeleccionadoId),
+                      );
+
+                      // Cada modalidad tiene sus propios parciales: al cambiar
+                      // de modalidad el backend elige el primero que le toca.
+                      if (
+                        grupoActual?.grupo?.modalidad !==
+                        grupoMateria.grupo?.modalidad
+                      ) {
+                        setParcialSeleccionadoId("");
+                      }
+
                       setGrupoSeleccionadoId(grupoMateria.id_grupo_materia);
                     }}
                     className={`w-full px-5 py-4 text-left transition ${
@@ -844,7 +1028,7 @@ export default function AsistenciaPage() {
             </div>
           )}
 
-          {captura?.parciales?.length > 0 && (
+          {captura?.parciales?.length > 1 && (
             <div className="border-t border-slate-200 px-5 py-4">
               <label
                 htmlFor="parcial-asistencia"
@@ -900,7 +1084,9 @@ export default function AsistenciaPage() {
                 <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-slate-500">
-                      Dias del parcial
+                      {tieneEvaluacionUnica(captura)
+                        ? "Dias de clase"
+                        : "Dias del parcial"}
                     </p>
                     <CalendarCheck size={18} className="text-blue-600" />
                   </div>
@@ -972,7 +1158,7 @@ export default function AsistenciaPage() {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => handleMarcarFecha(true)}
+                        onClick={() => handleMarcarFecha(ESTADO_PRESENTE)}
                         disabled={
                           saving ||
                           captura.alumnos.length === 0 ||
@@ -986,7 +1172,7 @@ export default function AsistenciaPage() {
 
                       <button
                         type="button"
-                        onClick={() => handleMarcarFecha(false)}
+                        onClick={() => handleMarcarFecha(ESTADO_FALTA)}
                         disabled={
                           saving ||
                           captura.alumnos.length === 0 ||
@@ -1065,7 +1251,9 @@ export default function AsistenciaPage() {
                             </th>
                           ))}
                           <th className="px-5 py-4 text-center text-sm font-semibold text-slate-600">
-                            Promedio parcial
+                            {tieneEvaluacionUnica(captura)
+                              ? "Asistencia total"
+                              : "Promedio parcial"}
                           </th>
                         </tr>
                       </thead>
@@ -1076,9 +1264,15 @@ export default function AsistenciaPage() {
                             alumno,
                             captura.fechas,
                             formValues,
+                            captura.retardos_por_falta,
                           );
                           const esRiesgo = promedio !== null && promedio < 80;
                           const asistencias = contarAsistencias(
+                            alumno,
+                            captura.fechas,
+                            formValues,
+                          );
+                          const retardos = contarRetardos(
                             alumno,
                             captura.fechas,
                             formValues,
@@ -1115,7 +1309,7 @@ export default function AsistenciaPage() {
 
                               {captura.fechas.map((fecha) => {
                                 const key = getCellKey(alumno.id_carga, fecha);
-                                const checked = Boolean(formValues[key]);
+                                const estado = getEstadoAsistencia(formValues[key]);
                                 const editable = !esFechaFutura(fecha);
 
                                 return (
@@ -1127,33 +1321,41 @@ export default function AsistenciaPage() {
                                         : ""
                                     }`}
                                   >
-                                    <label
-                                      className={`inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white transition ${
+                                    <button
+                                      type="button"
+                                      disabled={!editable || saving}
+                                      onClick={() =>
+                                        handleChangeAsistencia(
+                                          alumno.id_carga,
+                                          fecha,
+                                          getSiguienteEstado(estado),
+                                        )
+                                      }
+                                      title={`${ETIQUETAS_ESTADO[estado]} - clic para cambiar`}
+                                      aria-label={`Asistencia de ${getAlumnoNombre(
+                                        alumno,
+                                      )} en ${formatFecha(fecha)}: ${
+                                        ETIQUETAS_ESTADO[estado]
+                                      }. Clic para cambiar.`}
+                                      className={`inline-flex h-9 w-9 items-center justify-center rounded-md border bg-white transition ${
+                                        estado === ESTADO_RETARDO
+                                          ? "border-amber-300 bg-amber-50"
+                                          : "border-slate-200"
+                                      } ${
                                         editable
                                           ? "cursor-pointer hover:border-blue-300"
                                           : "cursor-not-allowed opacity-70"
                                       }`}
                                     >
-                                      <input
-                                        type="checkbox"
-                                        checked={checked}
-                                        disabled={!editable || saving}
-                                        onChange={(event) =>
-                                          handleChangeAsistencia(
-                                            alumno.id_carga,
-                                            fecha,
-                                            event.target.checked,
-                                          )
-                                        }
-                                        aria-label={`Asistencia de ${getAlumnoNombre(
-                                          alumno,
-                                        )} en ${formatFecha(fecha)}`}
-                                        className="sr-only"
-                                      />
-                                      {checked ? (
+                                      {estado === ESTADO_PRESENTE ? (
                                         <CheckCircle2
                                           size={20}
                                           className="text-emerald-600"
+                                        />
+                                      ) : estado === ESTADO_RETARDO ? (
+                                        <Clock
+                                          size={20}
+                                          className="text-amber-500"
                                         />
                                       ) : (
                                         <XCircle
@@ -1161,7 +1363,7 @@ export default function AsistenciaPage() {
                                           className="text-slate-300"
                                         />
                                       )}
-                                    </label>
+                                    </button>
                                   </td>
                                 );
                               })}
@@ -1178,6 +1380,7 @@ export default function AsistenciaPage() {
                                 </span>
                                 <p className="mt-1 text-xs font-medium text-slate-400">
                                   {asistencias}/{captura.fechas.length}
+                                  {retardos > 0 ? ` - ${retardos} ret.` : ""}
                                 </p>
                               </td>
                             </tr>
@@ -1185,6 +1388,10 @@ export default function AsistenciaPage() {
                         })}
                       </tbody>
                     </table>
+                    <p className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
+                      Clic en el icono para alternar: presente, retardo (x) o
+                      falta.
+                    </p>
                   </div>
                 )}
               </div>
@@ -1243,9 +1450,13 @@ export default function AsistenciaPage() {
               <div className="asistencia-pdf-periodo">
                 <span>Periodo correspondiente del</span>
                 <span className="asistencia-pdf-line">
-                  {getPeriodoTexto(captura)}
+                  {pdfPeriodo
+                    ? `${getPeriodoTexto(captura)}: ${pdfPeriodo.inicio}`
+                    : getPeriodoTexto(captura)}
                 </span>
-                <span className="asistencia-pdf-line">al</span>
+                <span className="asistencia-pdf-line">
+                  {pdfPeriodo ? `al ${pdfPeriodo.fin}` : "al"}
+                </span>
               </div>
               <div className="asistencia-pdf-box">
                 {getCuatrimestreTexto(captura.grupo_materia)}
@@ -1314,11 +1525,13 @@ export default function AsistenciaPage() {
                         : ""}
                     </th>
                   ))}
-                  {Array.from({ length: PDF_ACTIVITY_COLUMNS }, (_, index) => (
+                  {pdfActividades.map((clave, index) => (
                     <th
                       key={`actividad-${index + 1}`}
                       className="asistencia-pdf-activity"
-                    />
+                    >
+                      {clave || ""}
+                    </th>
                   ))}
                   {["C1", "C2", "C3", "C4", "C5", "EPA"].map((label) => (
                     <th key={label} className="asistencia-pdf-blue">
@@ -1329,7 +1542,18 @@ export default function AsistenciaPage() {
               </thead>
 
               <tbody className="asistencia-pdf-body">
-                {buildPdfRows(captura.alumnos).map((alumno, index) => (
+                {buildPdfRows(captura.alumnos).map((alumno, index) => {
+                  const datosDesglose = alumno
+                    ? pdfDatosPorCarga[alumno.id_carga]
+                    : null;
+                  const resumenAlumno = datosDesglose?.resumen;
+                  const cpf = resumenAlumno?.cpf;
+                  const reprobado =
+                    cpf !== null &&
+                    cpf !== undefined &&
+                    cpf < PDF_MINIMA_APROBATORIA;
+
+                  return (
                   <tr key={alumno?.id_carga || `empty-${index}`}>
                     <td className="asistencia-pdf-no">{index + 1}</td>
                     <td className="asistencia-pdf-name">
@@ -1350,25 +1574,44 @@ export default function AsistenciaPage() {
                           : ""}
                       </td>
                     ))}
-                    {Array.from(
-                      { length: PDF_ACTIVITY_COLUMNS },
-                      (_, index) => (
-                        <td
-                          key={`act-${alumno?.id_carga || "empty"}-${index + 1}`}
-                          className="asistencia-pdf-activity"
-                        />
-                      ),
-                    )}
-                    {["C1", "C2", "C3", "C4", "C5", "EPA"].map((label) => (
+                    {pdfActividades.map((clave, indiceActividad) => (
+                      <td
+                        key={`act-${alumno?.id_carga || "empty"}-${indiceActividad + 1}`}
+                        className="asistencia-pdf-activity"
+                      >
+                        {alumno && clave
+                          ? formatNumeroPdf(datosDesglose?.puntajes?.[clave])
+                          : ""}
+                      </td>
+                    ))}
+                    {PDF_CLAVES_CRITERIOS.map((label) => (
                       <td
                         key={`${label}-${alumno?.id_carga || index}`}
                         className="asistencia-pdf-blue"
-                      />
+                      >
+                        {alumno ? formatNumeroPdf(resumenAlumno?.[label]) : ""}
+                      </td>
                     ))}
-                    <td className="asistencia-pdf-peach" />
-                    <td />
+                    <td
+                      className="asistencia-pdf-peach"
+                      style={{
+                        fontWeight: 700,
+                        color: reprobado ? "#c00000" : undefined,
+                      }}
+                    >
+                      {formatNumeroPdf(cpf)}
+                    </td>
+                    <td
+                      style={{
+                        textAlign: "center",
+                        color: reprobado ? "#c00000" : undefined,
+                      }}
+                    >
+                      {resumenAlumno?.cpfl || ""}
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
 
@@ -1381,14 +1624,25 @@ export default function AsistenciaPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {["C1:", "C2:", "C3:", "C4:", "C5:", "Examen Parcial:"].map(
-                    (label) => (
-                      <tr key={label}>
-                        <td>{label}</td>
-                        <td />
+                  {PDF_CLAVES_CRITERIOS.map((clave) => {
+                    const criterio = getCriterioPdf(pdfDesgloseActual, clave);
+                    const usado = Number(criterio?.porcentaje) > 0;
+                    const etiqueta =
+                      clave === "EPA" ? "Examen Parcial:" : `${clave}:`;
+
+                    return (
+                      <tr key={clave}>
+                        <td>
+                          {usado && clave !== "EPA"
+                            ? `${etiqueta} ${criterio.nombre}`
+                            : etiqueta}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          {usado ? `${criterio.porcentaje}%` : ""}
+                        </td>
                       </tr>
-                    ),
-                  )}
+                    );
+                  })}
                 </tbody>
               </table>
 

@@ -12,13 +12,83 @@ import {
 } from "lucide-react";
 
 import { obtenerMiExpediente } from "../services/authService";
-import { obtenerCalificacionesAlumno } from "../services/calificacionesService";
+import {
+  obtenerCalificacionesAlumno,
+  obtenerParciales,
+} from "../services/calificacionesService";
 import { nombreApellidosPrimero } from "../utils/nombres";
 
 const emptyValue = "Sin registrar";
 
-function agruparCalificaciones(datos) {
+const MODALIDAD_POR_DEFECTO = "CUATRIMESTRAL";
+
+// {id_parcial: {indice, total, porcentaje, nombre}} segun el orden de los
+// parciales dentro de su modalidad. Viene del backend: nada esta fijo por id.
+function construirCatalogoParciales(datos, parcialesBackend) {
+  const fuente = new Map();
+
+  if (parcialesBackend.length > 0) {
+    parcialesBackend.forEach((parcial) => fuente.set(parcial.id_parcial, parcial));
+  } else {
+    // Respaldo: los parciales que trae la propia respuesta de calificaciones.
+    datos.forEach((item) => {
+      if (item.parcial && !fuente.has(item.parcial.id_parcial)) {
+        fuente.set(item.parcial.id_parcial, {
+          ...item.parcial,
+          modalidad: item.grupo?.modalidad,
+        });
+      }
+    });
+  }
+
+  const porModalidad = {};
+
+  [...fuente.values()]
+    .sort((a, b) => a.id_parcial - b.id_parcial)
+    .forEach((parcial) => {
+      const modalidad = parcial.modalidad || MODALIDAD_POR_DEFECTO;
+
+      (porModalidad[modalidad] ||= []).push(parcial);
+    });
+
+  const catalogo = {};
+
+  Object.values(porModalidad).forEach((lista) => {
+    lista.forEach((parcial, indice) => {
+      catalogo[parcial.id_parcial] = {
+        indice,
+        total: lista.length,
+        porcentaje: Number(parcial.porcentaje ?? 0),
+      };
+    });
+  });
+
+  return catalogo;
+}
+
+// Calificacion final ponderada por el porcentaje de cada parcial capturado
+// (misma regla que la boleta); sin pesos usa el promedio simple.
+function calcularFinal(notas, pesos) {
+  const capturadas = notas
+    .map((nota, indice) => ({ nota, peso: pesos[indice] || 0 }))
+    .filter(({ nota }) => nota !== null && nota !== undefined);
+
+  if (capturadas.length === 0) return null;
+
+  const pesoTotal = capturadas.reduce((suma, { peso }) => suma + peso, 0);
+  const valor =
+    pesoTotal > 0
+      ? capturadas.reduce((suma, { nota, peso }) => suma + nota * peso, 0) /
+        pesoTotal
+      : capturadas.reduce((suma, { nota }) => suma + nota, 0) /
+        capturadas.length;
+
+  return valor.toFixed(0);
+}
+
+function agruparCalificaciones(datos, parcialesBackend = []) {
   const periodos = {};
+  const catalogo = construirCatalogoParciales(datos, parcialesBackend);
 
   datos.forEach((item) => {
     const periodoId = item.periodo.id_periodo;
@@ -36,39 +106,33 @@ function agruparCalificaciones(datos) {
       (m) => m.id === item.materia.id_materia,
     );
 
-      if (!materia) {
-        materia = {
-          id: item.materia.id_materia,
-          materia: item.materia.nombre,
-          docente: nombreApellidosPrimero(item.capturado_por, emptyValue),
-          parciales: [null, null, null],
-          calificacion: null,
-        };
+    if (!materia) {
+      materia = {
+        id: item.materia.id_materia,
+        materia: item.materia.nombre,
+        docente: nombreApellidosPrimero(item.capturado_por, emptyValue),
+        parciales: [],
+        pesos: [],
+        evaluacionUnica: false,
+        calificacion: null,
+      };
 
       periodos[periodoId].materias.push(materia);
     }
 
-    switch (item.parcial.id_parcial) {
-      case 1:
-        materia.parciales[0] = item.calificacion;
-        break;
-      case 2:
-        materia.parciales[1] = item.calificacion;
-        break;
-      case 3:
-        materia.parciales[2] = item.calificacion;
-        break;
-      default:
-        break;
+    const info = catalogo[item.parcial?.id_parcial];
+
+    if (!info) return;
+
+    if (materia.parciales.length !== info.total) {
+      materia.parciales = Array(info.total).fill(null);
+      materia.pesos = Array(info.total).fill(0);
+      materia.evaluacionUnica = info.total === 1;
     }
 
-    const notas = materia.parciales.filter((x) => x !== null);
-
-    if (notas.length > 0) {
-      materia.calificacion = (
-        notas.reduce((a, b) => a + b, 0) / notas.length
-      ).toFixed(0);
-    }
+    materia.parciales[info.indice] = item.calificacion;
+    materia.pesos[info.indice] = info.porcentaje;
+    materia.calificacion = calcularFinal(materia.parciales, materia.pesos);
   });
 
   return Object.values(periodos);
@@ -164,12 +228,15 @@ export default function CalificacionesAlumnos() {
         setStudent(expediente);
 
         const alumnoId = expediente.alumno.id_alumno;
-        const calificaciones = await obtenerCalificacionesAlumno(alumnoId);
+        const [calificaciones, parciales] = await Promise.all([
+          obtenerCalificacionesAlumno(alumnoId),
+          obtenerParciales().catch(() => []),
+        ]);
 
         if (!activo) return;
         const agrupadas =
           calificaciones.length > 0
-            ? agruparCalificaciones(calificaciones)
+            ? agruparCalificaciones(calificaciones, parciales)
             : agruparHistorialAcademico(
                 expediente.expediente_alumno?.historial_academico || [],
               );
@@ -214,6 +281,10 @@ export default function CalificacionesAlumnos() {
   }
 
   const cuatri = cuatrimestres[activeIndex];
+  // Modalidad con una sola evaluacion (sabatina): solo se muestra la final.
+  const evaluacionUnica =
+    cuatri?.materias?.length > 0 &&
+    cuatri.materias.every((materia) => materia.evaluacionUnica);
 
   return (
     <div className="min-h-screen bg-[var(--background)] p-6">
@@ -327,10 +398,16 @@ export default function CalificacionesAlumnos() {
                   <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     <th className="py-2 pr-4">Materia</th>
                     <th className="py-2 pr-4">Docente</th>
-                    <th className="py-2 pr-4 text-center">Parcial 1</th>
-                    <th className="py-2 pr-4 text-center">Parcial 2</th>
-                    <th className="py-2 pr-4 text-center">Parcial 3</th>
-                    <th className="py-2 pl-4 text-right">Final</th>
+                    {!evaluacionUnica && (
+                      <>
+                        <th className="py-2 pr-4 text-center">Parcial 1</th>
+                        <th className="py-2 pr-4 text-center">Parcial 2</th>
+                        <th className="py-2 pr-4 text-center">Parcial 3</th>
+                      </>
+                    )}
+                    <th className="py-2 pl-4 text-right">
+                      {evaluacionUnica ? "Calificación final" : "Final"}
+                    </th>
                   </tr>
                 </thead>
 
@@ -352,15 +429,19 @@ export default function CalificacionesAlumnos() {
                       <td className="py-3 pr-4 text-slate-600">
                         {materia.docente}
                       </td>
-                      <td className="py-3 pr-4 text-center">
-                        <ParcialPill value={materia.parciales[0]} />
-                      </td>
-                      <td className="py-3 pr-4 text-center">
-                        <ParcialPill value={materia.parciales[1]} />
-                      </td>
-                      <td className="py-3 pr-4 text-center">
-                        <ParcialPill value={materia.parciales[2]} />
-                      </td>
+                      {!evaluacionUnica && (
+                        <>
+                          <td className="py-3 pr-4 text-center">
+                            <ParcialPill value={materia.parciales[0]} />
+                          </td>
+                          <td className="py-3 pr-4 text-center">
+                            <ParcialPill value={materia.parciales[1]} />
+                          </td>
+                          <td className="py-3 pr-4 text-center">
+                            <ParcialPill value={materia.parciales[2]} />
+                          </td>
+                        </>
+                      )}
                       <td className="py-3 pl-4 text-right">
                         <span
                           className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-bold ${gradeBadgeClasses(
@@ -423,19 +504,20 @@ export default function CalificacionesAlumnos() {
             </div>
 
             <dl className="space-y-2">
-              {["Primer parcial", "Segundo parcial", "Tercer parcial"].map(
-                (label, index) => (
-                  <div
-                    key={label}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5"
-                  >
-                    <dt className="text-sm text-slate-600">{label}</dt>
-                    <dd className="text-sm font-semibold text-slate-900">
-                      {detalle.parciales[index] ?? "—"}
-                    </dd>
-                  </div>
-                ),
-              )}
+              {!detalle.evaluacionUnica &&
+                ["Primer parcial", "Segundo parcial", "Tercer parcial"].map(
+                  (label, index) => (
+                    <div
+                      key={label}
+                      className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5"
+                    >
+                      <dt className="text-sm text-slate-600">{label}</dt>
+                      <dd className="text-sm font-semibold text-slate-900">
+                        {detalle.parciales[index] ?? "—"}
+                      </dd>
+                    </div>
+                  ),
+                )}
 
               <div className="flex items-center justify-between rounded-lg bg-[#0B245B] px-4 py-3">
                 <dt className="flex items-center gap-2 text-sm font-semibold text-white">

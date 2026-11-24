@@ -12,6 +12,13 @@ const colorsByClass = {
   "concentrado-orange": "#f8cbad",
   "concentrado-pink": "#f4a6b8",
   "concentrado-yellow": "#fff2a8",
+  // Formato de una sola evaluacion (sabatina)
+  "sab-slate": "#d5dce4",
+  "sab-verde": "#b7e1cd",
+  "sab-amarillo": "#ffff66",
+  "sab-cyan": "#33ccff",
+  "sab-lavanda": "#ccccff",
+  "sab-rojo": "#ff9999",
 };
 
 const baseCellStyle =
@@ -50,9 +57,9 @@ const th = (content, options = {}) => {
 };
 
 const td = (content, options = {}) => {
-  const { className = "", style = "" } = options;
+  const { className = "", colspan = 1, style = "" } = options;
 
-  return `<td style="${baseCellStyle}${colorStyle(className)}${style}">${escapeHtml(content)}</td>`;
+  return `<td colspan="${colspan}" style="${baseCellStyle}${colorStyle(className)}${style}">${escapeHtml(content)}</td>`;
 };
 
 const titleRow = (content, colspan) =>
@@ -196,7 +203,119 @@ const buildAttendanceTable = (materiaReporte, parciales) => {
   </table>`;
 };
 
+// Formato de una sola evaluacion (sabatina), igual al formato impreso:
+// calificaciones y asistencias lado a lado; la calificacion final se repite
+// como "Promedio".
+const formatCalificacionUnica = (valor) => {
+  if (valor === null || valor === undefined || valor === "") return "";
+
+  const numero = Number(valor);
+
+  if (Number.isNaN(numero)) return String(valor);
+
+  return Number.isInteger(numero) ? numero.toFixed(1) : String(numero);
+};
+
+const formatPorcentajeUnico = (valor) =>
+  valor === null || valor === undefined || valor === ""
+    ? ""
+    : `${Math.round(Number(valor))}%`;
+
+const buildSabatinoSheet = (materiaReporte, concentrado) => {
+  const cuatrimestre = concentrado?.grupo?.cuatrimestre;
+  const centro = "text-align:center;";
+  const sinBorde = "border:none;background:none;";
+  const gap = `<td style="${baseCellStyle}${sinBorde}"></td>`;
+  const blank = `<tr><td colspan="9" style="border:none;height:10px;"></td></tr>`;
+  const clases = materiaReporte.total_clases;
+
+  const filas = materiaReporte.alumnos
+    .map((alumno) => {
+      const { asistencias, porcentaje } = alumno.asistencia_final;
+      const final = formatCalificacionUnica(alumno.promedio_final);
+
+      return `<tr>
+        ${td(alumno.no, { style: centro })}
+        ${td(formatStudentNameLastNamesFirst(alumno), {
+          style: "text-transform:uppercase;",
+        })}
+        ${td(final, { className: "sab-lavanda", style: centro })}
+        ${td(final, { className: "sab-rojo", style: `${centro}font-size:10pt;` })}
+        ${gap}
+        ${td(asistencias, { className: "sab-amarillo", style: centro })}
+        ${td(formatPorcentajeUnico(porcentaje), {
+          className: "sab-amarillo",
+          style: centro,
+        })}
+        ${td(asistencias, { className: "sab-cyan", style: centro })}
+        ${td(formatPorcentajeUnico(porcentaje), {
+          className: "sab-cyan",
+          style: centro,
+        })}
+      </tr>`;
+    })
+    .join("");
+
+  return `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;table-layout:fixed;width:100%;">
+    <colgroup>
+      <col style="width:4%" /><col style="width:29%" /><col style="width:10%" />
+      <col style="width:10%" /><col style="width:12%" /><col style="width:8%" />
+      <col style="width:8%" /><col style="width:10%" /><col style="width:9%" />
+    </colgroup>
+    ${titleRow("Centro de Estudios Superiores de la Frontera, UNIFRONT", 9)}
+    ${titleRow("Concentrado de calificaciones", 9)}
+    ${titleRow("Departamento de control escolar", 9)}
+    ${blank}
+    <tr>
+      ${td(`NOMBRE DEL DOCENTE: ${(materiaReporte.docente || "").toUpperCase()}`, {
+        className: "sab-slate",
+        colspan: 5,
+      })}
+      ${td((cuatrimestre?.nombre || "").toUpperCase(), {
+        colspan: 4,
+        style: `${centro}${sinBorde}`,
+      })}
+    </tr>
+    ${blank}
+    <tr>
+      ${td(
+        `ASIGNATURA: ${(materiaReporte.materia?.nombre || "").toUpperCase()}`,
+        { className: "sab-verde", colspan: 4 },
+      )}
+      ${th("Clases dadas")}
+      ${td(clases, { className: "sab-amarillo", colspan: 2, style: centro })}
+      ${td(clases, { className: "sab-cyan", colspan: 2, style: centro })}
+    </tr>
+    ${blank}
+    <tr>
+      ${th("No.")}
+      ${th("Nombre del alumno", { style: "width:240px;" })}
+      ${th("Calificación final", { className: "sab-lavanda" })}
+      ${th("Promedio", { className: "sab-rojo" })}
+      <th style="${sinBorde}"></th>
+      ${th("Asistencias", { className: "sab-amarillo" })}
+      ${th("%", { className: "sab-amarillo" })}
+      ${th("Total de asistencias", { className: "sab-cyan" })}
+      ${th("%", { className: "sab-cyan" })}
+    </tr>
+    ${filas}
+    ${blank}
+    ${blank}
+    <tr>
+      ${td("DIRECTOR (A) DE LA LICENCIATURA", { colspan: 4, style: centro })}
+      <td style="${sinBorde}"></td>
+      ${td("CONTROL ESCOLAR", { colspan: 4, style: centro })}
+    </tr>
+  </table>
+  <br />
+  <br />`;
+};
+
 const buildMateriaSheet = (materiaReporte, concentrado) => {
+  if (concentrado?.evaluacion_unica) {
+    return buildSabatinoSheet(materiaReporte, concentrado);
+  }
+
   const parciales = concentrado?.parciales || [];
   const carrera = concentrado?.grupo?.carrera;
   const cuatrimestre = concentrado?.grupo?.cuatrimestre;

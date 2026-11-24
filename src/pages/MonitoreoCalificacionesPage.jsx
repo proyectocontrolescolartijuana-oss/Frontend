@@ -168,7 +168,7 @@ export default function MonitoreoCalificacionesPage() {
 
   const validarGrupo = (grupo) => {
     for (const alumno of grupo.alumnos) {
-      for (const parcial of data.parciales) {
+      for (const parcial of grupo.parciales) {
         const value = formValues[getCellKey(alumno.id_carga, parcial.id_parcial)];
 
         if (String(value ?? "").trim() === "") continue;
@@ -200,7 +200,7 @@ export default function MonitoreoCalificacionesPage() {
     }
 
     const calificaciones = grupo.alumnos.flatMap((alumno) =>
-      data.parciales.map((parcial) => {
+      grupo.parciales.map((parcial) => {
         const value = formValues[getCellKey(alumno.id_carga, parcial.id_parcial)];
         const valueLimpio = String(value ?? "").trim();
 
@@ -459,6 +459,11 @@ export default function MonitoreoCalificacionesPage() {
                       <div className="px-5 py-8 text-sm text-slate-500">
                         Esta materia-grupo no tiene alumnos cargados.
                       </div>
+                    ) : grupo.parciales.length === 0 ? (
+                      <div className="px-5 py-8 text-sm text-amber-700">
+                        La modalidad de este grupo ({grupo.modalidad}) aun no
+                        tiene evaluaciones configuradas.
+                      </div>
                     ) : (
                       <div className="overflow-x-auto">
                         <table className="min-w-full">
@@ -470,7 +475,7 @@ export default function MonitoreoCalificacionesPage() {
                               <th className="px-5 py-4 text-left text-sm font-semibold text-slate-600">
                                 Matricula
                               </th>
-                              {data.parciales.map((parcial) => (
+                              {grupo.parciales.map((parcial) => (
                                 <th
                                   key={parcial.id_parcial}
                                   className="px-5 py-4 text-center text-sm font-semibold text-slate-600"
@@ -478,9 +483,11 @@ export default function MonitoreoCalificacionesPage() {
                                   <span className="block whitespace-nowrap">
                                     {parcial.nombre}
                                   </span>
-                                  <span className="text-xs font-medium text-slate-400">
-                                    {parcial.porcentaje}%
-                                  </span>
+                                  {grupo.parciales.length > 1 && (
+                                    <span className="text-xs font-medium text-slate-400">
+                                      {parcial.porcentaje}%
+                                    </span>
+                                  )}
                                 </th>
                               ))}
                               <th className="px-5 py-4 text-center text-sm font-semibold text-slate-600">
@@ -509,7 +516,7 @@ export default function MonitoreoCalificacionesPage() {
                                   {alumno.alumno?.matricula ||
                                     "Sin matricula"}
                                 </td>
-                                {data.parciales.map((parcial) => {
+                                {grupo.parciales.map((parcial) => {
                                   const calificacion =
                                     alumno.calificaciones.find(
                                       (item) =>
@@ -587,7 +594,7 @@ export default function MonitoreoCalificacionesPage() {
                                   <span
                                     className={`inline-flex rounded-md px-2.5 py-1 text-xs font-bold ${getBadgeClass(
                                       alumno.pendientes,
-                                      data.parciales.length,
+                                      grupo.parciales.length,
                                     )}`}
                                   >
                                     {alumno.pendientes === 0

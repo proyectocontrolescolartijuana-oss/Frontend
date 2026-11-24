@@ -86,6 +86,13 @@ export const obtenerCalificacionesAlumno = async (alumnoId) => {
   return response.data;
 };
 
+// Parciales de todas las modalidades (id, nombre, porcentaje y modalidad).
+export const obtenerParciales = async () => {
+  const response = await api.get("/parciales/");
+
+  return response.data;
+};
+
 export const obtenerCalificacionesGrupo = async (grupoId) => {
   const response = await api.get("/calificaciones/", {
     params: { grupo_id: grupoId },

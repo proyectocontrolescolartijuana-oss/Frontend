@@ -6,6 +6,7 @@ const getInitialForm = (carrera) => ({
   rvoe: carrera?.rvoe || "",
   nombre: carrera?.nombre || "",
   nivel: carrera?.nivel || "LICENCIATURA",
+  modalidad: carrera?.modalidad || "CUATRIMESTRAL",
   duracion_cuatrimestres: carrera?.duracion_cuatrimestres || 9,
   fecha_autorizacion: carrera?.fecha_autorizacion || "",
   estado: carrera?.estado ?? true,
@@ -58,6 +59,7 @@ export default function CarreraForm({
       rvoe: form.rvoe,
       nombre: form.nombre,
       nivel: form.nivel,
+      modalidad: form.modalidad,
       duracion_cuatrimestres: form.duracion_cuatrimestres,
       fecha_autorizacion: form.fecha_autorizacion,
       estado: form.estado,
@@ -219,6 +221,27 @@ export default function CarreraForm({
             <option value="INGENIERIA">Ingeniería</option>
             <option value="MAESTRIA">Maestría</option>
           </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Modalidad
+          </label>
+
+          <select
+            name="modalidad"
+            value={form.modalidad}
+            onChange={handleChange}
+            className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
+            required
+          >
+            <option value="CUATRIMESTRAL">Cuatrimestral</option>
+            <option value="SABATINA">Sabatina</option>
+          </select>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Define el formato del concentrado de calificaciones de la carrera.
+          </p>
         </div>
 
         <div>

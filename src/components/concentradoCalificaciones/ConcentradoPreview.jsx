@@ -1,5 +1,6 @@
 import { FileSpreadsheet } from "lucide-react";
 
+import ConcentradoSabatinoPage from "./ConcentradoSabatinoPage";
 import ConcentradoSubjectPage from "./ConcentradoSubjectPage";
 
 export default function ConcentradoPreview({ concentrado, logoUnifront }) {
@@ -7,6 +8,10 @@ export default function ConcentradoPreview({ concentrado, logoUnifront }) {
   const materias = concentrado?.materias || [];
   const carrera = concentrado?.grupo?.carrera;
   const cuatrimestre = concentrado?.grupo?.cuatrimestre;
+  // El backend indica si la modalidad tiene una sola evaluacion (sabatina).
+  const Pagina = concentrado?.evaluacion_unica
+    ? ConcentradoSabatinoPage
+    : ConcentradoSubjectPage;
 
   return (
     <section className="overflow-auto rounded-lg border border-slate-200 bg-slate-100 p-4 shadow-sm">
@@ -17,7 +22,7 @@ export default function ConcentradoPreview({ concentrado, logoUnifront }) {
       ) : (
         <div id="concentrado-preview" className="mx-auto space-y-4">
           {materias.map((materiaReporte) => (
-            <ConcentradoSubjectPage
+            <Pagina
               key={materiaReporte.id_grupo_materia}
               carrera={carrera}
               cuatrimestre={cuatrimestre}

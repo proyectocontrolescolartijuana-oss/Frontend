@@ -10,6 +10,17 @@ const formatearFecha = (fecha) => {
   return `${day}/${month}/${year}`;
 };
 
+const MODALIDADES = {
+  CUATRIMESTRAL: {
+    etiqueta: "Cuatrimestral",
+    className: "bg-slate-100 text-slate-700",
+  },
+  SABATINA: {
+    etiqueta: "Sabatina",
+    className: "bg-blue-50 text-blue-700",
+  },
+};
+
 export default function CarreraListCard({ carreras, onEliminar, onEditar }) {
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -37,6 +48,10 @@ export default function CarreraListCard({ carreras, onEliminar, onEditar }) {
 
               <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">
                 Nombre
+              </th>
+
+              <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">
+                Modalidad
               </th>
 
               <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">
@@ -87,6 +102,20 @@ export default function CarreraListCard({ carreras, onEliminar, onEditar }) {
 
                 <td className="px-6 py-5 font-medium text-slate-900">
                   {carrera.nombre}
+                </td>
+
+                <td className="px-6 py-5">
+                  <span
+                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                      (MODALIDADES[carrera.modalidad] || MODALIDADES.CUATRIMESTRAL)
+                        .className
+                    }`}
+                  >
+                    {
+                      (MODALIDADES[carrera.modalidad] || MODALIDADES.CUATRIMESTRAL)
+                        .etiqueta
+                    }
+                  </span>
                 </td>
 
                 <td className="px-6 py-5 font-medium text-slate-700">

@@ -93,6 +93,10 @@ export default function CarrerasPage() {
       await cargarCarreras();
     } catch (error) {
       console.error(error);
+      window.alert(
+        error.response?.data?.detail ||
+          "No se pudo actualizar la carrera. Revisa los datos e intenta de nuevo.",
+      );
     }
   };
 
