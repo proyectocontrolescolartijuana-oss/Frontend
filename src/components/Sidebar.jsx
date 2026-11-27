@@ -35,7 +35,7 @@ function Sidebar({ isOpen, onToggle }) {
 
   if (!isOpen) {
     return (
-      <aside className="flex min-h-screen w-16 shrink-0 flex-col items-center bg-[var(--sidebar)] px-2 py-4 text-[var(--sidebar-foreground)] shadow-lg transition-[width] duration-300">
+      <aside className="sticky top-0 flex h-screen w-16 shrink-0 flex-col items-center bg-[var(--sidebar)] px-2 py-4 text-[var(--sidebar-foreground)] shadow-lg transition-[width] duration-300">
         <button
           type="button"
           onClick={onToggle}
@@ -50,7 +50,7 @@ function Sidebar({ isOpen, onToggle }) {
   }
 
   return (
-    <aside className="flex min-h-screen w-72 shrink-0 flex-col bg-[var(--sidebar)] p-4 text-[var(--sidebar-foreground)] shadow-lg transition-[width] duration-300">
+    <aside className="sticky top-0 flex h-screen w-72 shrink-0 flex-col bg-[var(--sidebar)] p-4 text-[var(--sidebar-foreground)] shadow-lg transition-[width] duration-300">
       {/* Logo */}
       <div className="rounded-2xl bg-[var(--primary)] p-4 shadow-lg">
         <div className="flex items-center justify-between gap-3">

@@ -40,6 +40,8 @@ const MESES = [
   "diciembre",
 ];
 
+const nombreMes = (mes) => MESES[Number(mes) - 1] || "";
+
 const formatearFechaReconocimiento = (value) => {
   if (!value) return "";
 
@@ -51,6 +53,9 @@ const formatearFechaReconocimiento = (value) => {
 
   return `${Number(day)} de ${mes} del ${year}`;
 };
+
+// Campos que se capturan y se muestran en mayúsculas
+const CAMPOS_MAYUSCULAS = ["nombreAlumno", "presidente", "secretaria", "vocal"];
 
 const initialForm = {
   idAlumno: "",
@@ -218,6 +223,7 @@ export default function ActaTitulacionLicenciatura() {
   };
 
   const value = (text) => text || "";
+  const mayusculas = (text) => (text || "").toLocaleUpperCase("es-MX");
 
   return (
     <div className="space-y-6 p-6">
@@ -349,14 +355,20 @@ export default function ActaTitulacionLicenciatura() {
             padding: 0;
           }
 
+          /* Jurado (hoja 1): sin padding izquierdo para dar más ancho al nombre */
           .acta-titulacion-jurado {
             margin: 0.46in 0 0.24in;
-            padding-left: 2.2in;
+            padding-left: 0;
             font-weight: 700;
           }
 
           .acta-titulacion-jurado .acta-titulacion-row {
             margin-top: 0.02in;
+          }
+
+          .acta-titulacion-jurado .acta-titulacion-line {
+            white-space: nowrap;
+            font-size: 10.5pt;
           }
 
           .acta-titulacion-center-row {
@@ -397,13 +409,20 @@ export default function ActaTitulacionLicenciatura() {
             border-bottom: 1.3px solid #333;
           }
 
+          /* Jurado (hoja 2): nombre en una sola línea */
           .acta-titulacion-jurado-table {
             display: grid;
-            grid-template-columns: 1.45in 1fr 2.1in;
-            column-gap: 0.14in;
+            grid-template-columns: 1.3in minmax(0, 1fr) 1.9in;
+            column-gap: 0.12in;
             row-gap: 0.18in;
             align-items: end;
             margin-top: 0.3in;
+          }
+
+          .acta-titulacion-jurado-table .acta-titulacion-line {
+            white-space: nowrap;
+            font-size: 10.5pt;
+            overflow: visible;
           }
 
           .acta-titulacion-table-head {
@@ -430,6 +449,10 @@ export default function ActaTitulacionLicenciatura() {
             justify-content: center;
             gap: 0.08in;
             margin-top: 0.52in;
+          }
+
+          .acta-titulacion-fecha-final .acta-titulacion-line {
+            min-width: 0.9in;
           }
 
           .acta-titulacion-coordinadora {
@@ -636,7 +659,9 @@ export default function ActaTitulacionLicenciatura() {
                   name={name}
                   value={form[name]}
                   onChange={handleChange}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className={`mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 ${
+                    CAMPOS_MAYUSCULAS.includes(name) ? "uppercase" : ""
+                  }`}
                 />
               </label>
             ))}
@@ -709,15 +734,21 @@ export default function ActaTitulacionLicenciatura() {
                 <div className="acta-titulacion-block">
                   <div className="acta-titulacion-row">
                     <span>Entidad Federativa:</span>
-                    <span>
-                      {value(form.entidadFederativa)}, Número de Autorización:
+                    <span className="acta-titulacion-editable">
+                      {value(form.entidadFederativa)}
                     </span>
+                  </div>
+                  <div className="acta-titulacion-row">
+                    <span>Número de Autorización:</span>
                     <span className="acta-titulacion-editable">
                       {value(form.numeroAutorizacion)}
                     </span>
                   </div>
-                  <div className="acta-titulacion-row">
-                    <span>En {value(form.ciudadActo)} siendo las</span>
+                  <div
+                    className="acta-titulacion-row"
+                    style={{ flexWrap: "wrap" }}
+                  >
+                    <span>En {value(form.ciudadActo)}, siendo las</span>
                     <span className="acta-titulacion-editable">
                       {value(form.horaActo)}
                     </span>
@@ -725,19 +756,18 @@ export default function ActaTitulacionLicenciatura() {
                     <span className="acta-titulacion-editable">
                       {value(form.diaActo)}
                     </span>
-                    <span>del mes de</span>
+                    <span>de</span>
                     <span className="acta-titulacion-editable">
-                      {value(form.mesActo)}
+                      {nombreMes(form.mesActo)}
                     </span>
-                    <span>del</span>
+                    <span>del año</span>
                     <span className="acta-titulacion-editable">
-                      {value(form.anioActo)}
+                      {value(form.anioActo)}, en el Centro de Estudios Superiores de la Frontera UNIFRONT
                     </span>
+                    
                   </div>
                   <div>
-                    en el Centro de Estudios Superiores de la Frontera UNIFRONT
-                    <br />
-                    Ubicado en {value(form.domicilioInstitucion)}
+                    ubicado en {value(form.domicilioInstitucion)}
                   </div>
 
                   <div className="acta-titulacion-jurado">
@@ -746,7 +776,7 @@ export default function ActaTitulacionLicenciatura() {
                       <span>Presidente:</span>
                       <span className="acta-titulacion-line acta-titulacion-full">
                         <span className="acta-titulacion-editable">
-                          {value(form.presidente)}
+                          {mayusculas(form.presidente)}
                         </span>
                       </span>
                     </div>
@@ -754,7 +784,7 @@ export default function ActaTitulacionLicenciatura() {
                       <span>Secretaria:</span>
                       <span className="acta-titulacion-line acta-titulacion-full">
                         <span className="acta-titulacion-editable">
-                          {value(form.secretaria)}
+                          {mayusculas(form.secretaria)}
                         </span>
                       </span>
                     </div>
@@ -762,7 +792,7 @@ export default function ActaTitulacionLicenciatura() {
                       <span>Vocal:</span>
                       <span className="acta-titulacion-line acta-titulacion-full">
                         <span className="acta-titulacion-editable">
-                          {value(form.vocal)}
+                          {mayusculas(form.vocal)}
                         </span>
                       </span>
                     </div>
@@ -779,7 +809,7 @@ export default function ActaTitulacionLicenciatura() {
 
               <div className="acta-titulacion-center-row acta-titulacion-wide-line">
                 <span className="acta-titulacion-editable">
-                  {value(form.nombreAlumno)}
+                  {mayusculas(form.nombreAlumno)}
                 </span>
               </div>
 
@@ -854,7 +884,7 @@ export default function ActaTitulacionLicenciatura() {
                 <strong>Presidente :</strong>
                 <div className="acta-titulacion-line acta-titulacion-full">
                   <span className="acta-titulacion-editable">
-                    {value(form.presidente)}
+                    {mayusculas(form.presidente)}
                   </span>
                 </div>
                 <div className="acta-titulacion-line acta-titulacion-full" />
@@ -862,7 +892,7 @@ export default function ActaTitulacionLicenciatura() {
                 <strong>Secretaria :</strong>
                 <div className="acta-titulacion-line acta-titulacion-full">
                   <span className="acta-titulacion-editable">
-                    {value(form.secretaria)}
+                    {mayusculas(form.secretaria)}
                   </span>
                 </div>
                 <div className="acta-titulacion-line acta-titulacion-full" />
@@ -870,7 +900,7 @@ export default function ActaTitulacionLicenciatura() {
                 <strong>Vocal:</strong>
                 <div className="acta-titulacion-line acta-titulacion-full">
                   <span className="acta-titulacion-editable">
-                    {value(form.vocal)}
+                    {mayusculas(form.vocal)}
                   </span>
                 </div>
                 <div className="acta-titulacion-line acta-titulacion-full" />
@@ -911,7 +941,7 @@ export default function ActaTitulacionLicenciatura() {
               </p>
 
               <div className="acta-titulacion-fecha-final">
-                <span>{value(form.ciudadAutenticacion)} a</span>
+                <span>{value(form.ciudadAutenticacion)}, a</span>
                 <span className="acta-titulacion-line">
                   <span className="acta-titulacion-editable">
                     {value(form.diaAutenticacion)}
@@ -920,10 +950,10 @@ export default function ActaTitulacionLicenciatura() {
                 <span>de</span>
                 <span className="acta-titulacion-line">
                   <span className="acta-titulacion-editable">
-                    {value(form.mesAutenticacion)}
+                    {nombreMes(form.mesAutenticacion)}
                   </span>
                 </span>
-                <span>del</span>
+                <span>de</span>
                 <span className="acta-titulacion-line">
                   <span className="acta-titulacion-editable">
                     {value(form.anioAutenticacion)}

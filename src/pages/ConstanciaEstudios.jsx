@@ -248,9 +248,9 @@ const ESTILOS = `
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.5cm;   /* tamaño infantil: 2.5 x 3 cm */
+    width: 2.5cm;
     height: 3cm;
-    margin-top: 0.22in;   /* espacio entre el logo y la foto */
+    margin: 0.22in 0 0 auto;   /* auto a la izquierda = alineada a la derecha */
     border: 1.5px solid #222;
     background: #fff;
     overflow: hidden;
