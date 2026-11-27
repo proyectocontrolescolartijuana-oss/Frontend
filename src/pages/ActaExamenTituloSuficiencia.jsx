@@ -4,9 +4,8 @@ import logoUnifront from "../assets/UnifrontLogoAzul.png";
 import { obtenerGrupos, obtenerPeriodos } from "../services/alumnosGruposService";
 import { obtenerCuatrimestres } from "../services/planesEstudioService";
 import { obtenerAlumnosDetalle } from "../services/usuariosService";
-import { formatDateDDMMYYYY } from "../utils/fechas";
 
-const DIRECCION_ESCUELA = "Blvd. Bernardo O'Higgins No. 6050, Los Alamos";
+const DIRECCION_ESCUELA = "Blvd. Bernardo O'Higgins No. 6050, Los Álamos";
 
 const normalizar = (value = "") =>
   value
@@ -16,9 +15,60 @@ const normalizar = (value = "") =>
     .toLowerCase()
     .trim();
 
+// Fecha local en formato YYYY-MM-DD (lo que espera <input type="date">)
+const hoy = () => {
+  const d = new Date();
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mes}-${dia}`;
+};
+
+// YYYY-MM-DD -> DD/MM/YYYY sin pasar por new Date (evita el desfase de un día)
+const formatearFecha = (value) => {
+  if (!value) return "";
+  const [anio, mes, dia] = value.split("-");
+  if (!anio || !mes || !dia) return "";
+  return `${dia}/${mes}/${anio}`;
+};
+
+const NUMEROS_LETRA = [
+  "CERO",
+  "UNO",
+  "DOS",
+  "TRES",
+  "CUATRO",
+  "CINCO",
+  "SEIS",
+  "SIETE",
+  "OCHO",
+  "NUEVE",
+  "DIEZ",
+];
+
+// 8 -> "OCHO", 8.5 -> "OCHO PUNTO CINCO"
+const calificacionALetra = (value) => {
+  if (value === "" || value === null || value === undefined) return "";
+
+  const numero = Number(value);
+  if (Number.isNaN(numero) || numero < 0 || numero > 10) return "";
+
+  const [entero, decimal] = String(value).split(".");
+  const letraEntero = NUMEROS_LETRA[Number(entero)];
+
+  if (!letraEntero) return "";
+  if (!decimal || Number(decimal) === 0) return letraEntero;
+
+  const letraDecimal = decimal
+    .split("")
+    .map((digito) => NUMEROS_LETRA[Number(digito)])
+    .join(" ");
+
+  return `${letraEntero} PUNTO ${letraDecimal}`;
+};
+
 const initialForm = {
   idAlumno: "",
-  fecha: "",
+  fecha: hoy(),
   periodo: "",
   direccionEscuela: DIRECCION_ESCUELA,
   nombreAlumno: "",
@@ -34,6 +84,9 @@ const initialForm = {
   sinodalDos: "",
   sinodalTres: "",
 };
+
+const inputClass =
+  "mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
 
 export default function ActaExamenTituloSuficiencia() {
   const [form, setForm] = useState(initialForm);
@@ -59,13 +112,12 @@ export default function ActaExamenTituloSuficiencia() {
           gruposResponse,
           cuatrimestresResponse,
           periodosResponse,
-        ] =
-          await Promise.all([
-            obtenerAlumnosDetalle(),
-            obtenerGrupos(),
-            obtenerCuatrimestres(),
-            obtenerPeriodos(),
-          ]);
+        ] = await Promise.all([
+          obtenerAlumnosDetalle(),
+          obtenerGrupos(),
+          obtenerCuatrimestres(),
+          obtenerPeriodos(),
+        ]);
 
         if (!activo) return;
 
@@ -177,12 +229,23 @@ export default function ActaExamenTituloSuficiencia() {
     }));
   };
 
+  // Al capturar el número, la letra se llena sola (sigue siendo editable)
+  const handleCalificacionNumeroChange = (event) => {
+    const { value } = event.target;
+
+    setForm((currentForm) => ({
+      ...currentForm,
+      calificacionNumero: value,
+      calificacionLetra: calificacionALetra(value),
+    }));
+  };
+
   const handleDownload = () => {
     window.print();
   };
 
   const lineValue = (value) => value || "";
-  const fechaLineValue = (value) => formatDateDDMMYYYY(value);
+  const fechaLineValue = (value) => formatearFecha(value);
 
   return (
     <div className="space-y-6 p-6">
@@ -205,7 +268,7 @@ export default function ActaExamenTituloSuficiencia() {
             position: relative;
             width: 8.5in;
             min-height: 11in;
-            padding: 0.28in 1.0in 0.55in;
+            padding: 0.28in 1.0in 0.5in;
             background: #fff;
             overflow: hidden;
           }
@@ -217,7 +280,7 @@ export default function ActaExamenTituloSuficiencia() {
           .acta-titulo-logo {
             width: 2.98in;
             height: auto;
-            margin: 0 auto 0.22in;
+            margin: 0 auto 0.18in;
           }
 
           .acta-titulo-principal {
@@ -226,16 +289,17 @@ export default function ActaExamenTituloSuficiencia() {
             font-weight: 800;
           }
 
+          /* Columna derecha más ancha para que quepan fecha y periodo completos */
           .acta-titulo-meta {
             display: grid;
-            grid-template-columns: 1fr 2.0in;
-            gap: 0.16in;
-            margin: 0.17in 0 0.12in;
+            grid-template-columns: 1fr 2.6in;
+            gap: 0.14in;
+            margin: 0.17in 0 0.1in;
           }
 
           .acta-titulo-meta-derecha {
             display: grid;
-            gap: 0.09in;
+            gap: 0.12in;
           }
 
           .acta-titulo-cuerpo {
@@ -246,7 +310,15 @@ export default function ActaExamenTituloSuficiencia() {
             display: flex;
             align-items: flex-end;
             gap: 0.05in;
-            margin-bottom: 0.08in;
+            margin-bottom: 0.1in;
+          }
+
+          .acta-titulo-row-tight {
+            margin-bottom: 0.05in;
+          }
+
+          .acta-titulo-row-leyenda {
+            margin-bottom: 0.26in;
           }
 
           .acta-titulo-label {
@@ -254,25 +326,23 @@ export default function ActaExamenTituloSuficiencia() {
             white-space: nowrap;
           }
 
+          /* Mismo tipo de letra que el cuerpo del acta (igual que el extraordinario) */
           .acta-titulo-linea {
             display: inline-block;
             min-width: 0.85in;
-            height: 0.19in;
-            border-bottom: 1.5px solid #444;
-            font-family: "Segoe Print", "Comic Sans MS", cursive;
-            font-size: 11pt;
+            height: 0.2in;
+            border-bottom: 1.5px solid #555;
             font-weight: 600;
             text-align: center;
-            line-height: 0.16in;
+            line-height: 0.18in;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
 
           .acta-titulo-linea-full {
             flex: 1 1 auto;
             min-width: 0;
-          }
-
-          .acta-titulo-linea-nombre {
-            min-width: 2.05in;
           }
 
           .acta-titulo-linea-carrera {
@@ -286,72 +356,89 @@ export default function ActaExamenTituloSuficiencia() {
           }
 
           .acta-titulo-linea-corta {
-            min-width: 0.72in;
+            min-width: 0.85in;
+          }
+
+          /* Campo con leyenda debajo de la línea (LETRA / NÚMERO) */
+          .acta-titulo-campo {
+            position: relative;
+            display: flex;
+          }
+
+          .acta-titulo-campo-full {
+            flex: 1 1 auto;
+            min-width: 0;
+          }
+
+          .acta-titulo-campo .acta-titulo-linea {
+            width: 100%;
+          }
+
+          .acta-titulo-campo-leyenda {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 0.02in;
+            font-size: 9pt;
+            text-align: center;
           }
 
           .acta-titulo-atencion {
-            margin: 0.17in 0 0.18in;
+            margin: 0.14in 0 0.2in;
             text-align: center;
           }
 
+          /* Espacio entre el texto legal y las firmas */
           .acta-titulo-aviso {
-            margin: 0.22in 0 0.22in;
+            margin: 0.1in 0 0.5in;
             font-weight: 700;
             text-align: justify;
-          }
-
-          .acta-titulo-sublinea {
-            display: grid;
-            grid-template-columns: 1fr 0.95in;
-            margin-top: -0.05in;
-            padding-left: 2.7in;
-            font-size: 9pt;
-            text-align: center;
           }
 
           .acta-titulo-firmas {
             display: grid;
             grid-template-columns: 1fr 1fr;
             column-gap: 0.8in;
-            row-gap: 0.22in;
-            margin-top: 0.08in;
+            row-gap: 0.42in;
+            margin-top: 0.1in;
           }
 
           .acta-titulo-firma {
-            min-height: 0.55in;
             text-align: center;
           }
 
           .acta-titulo-firma-centro {
             grid-column: 1 / -1;
-            width: 2.55in;
+            width: 2.9in;
             margin: 0 auto;
           }
 
           .acta-titulo-firma-linea {
             height: 0.22in;
-            border-bottom: 1.5px solid #444;
-            font-family: "Segoe Print", "Comic Sans MS", cursive;
-            font-size: 10.5pt;
+            border-bottom: 1.5px solid #555;
             font-weight: 600;
-            line-height: 0.18in;
+            line-height: 0.2in;
             text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
 
           .acta-titulo-firma p {
-            margin: 0.01in 0 0;
+            margin: 0.02in 0 0;
             font-size: 9.5pt;
           }
 
           .acta-titulo-firmas-finales {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            column-gap: 0.78in;
-            margin-top: 0.26in;
+            column-gap: 0.8in;
+            margin-top: 0.5in;
           }
 
           .acta-titulo-copias {
-            margin: 0.03in 0 0;
+            margin: 0.08in 0 0;
             font-size: 7.5pt;
           }
 
@@ -401,7 +488,7 @@ export default function ActaExamenTituloSuficiencia() {
 
           <div>
             <h1 className="text-4xl font-bold text-slate-900">
-              Acta de examen a titulo de suficiencia
+              Acta de examen a título de suficiencia
             </h1>
             <p className="mt-1 text-slate-500">
               Captura los datos y revisa el acta antes de descargarla.
@@ -460,9 +547,9 @@ export default function ActaExamenTituloSuficiencia() {
                 placeholder={
                   loading
                     ? "Cargando alumnos..."
-                    : "Busca por nombre o matricula"
+                    : "Busca por nombre o matrícula"
                 }
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                className={`${inputClass} disabled:bg-slate-100`}
               />
 
               {mostrarOpciones && (
@@ -494,26 +581,34 @@ export default function ActaExamenTituloSuficiencia() {
             </label>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {[
-                ["fecha", "Fecha"],
-                ["periodo", "Periodo"],
-              ].map(([name, label]) => (
-                <label key={name} className="block">
-                  <span className="text-sm font-medium text-slate-700">
-                    {label}
-                  </span>
-                  <input
-                    name={name}
-                    value={form[name]}
-                    onChange={handleChange}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
-              ))}
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">
+                  Fecha
+                </span>
+                <input
+                  type="date"
+                  name="fecha"
+                  value={form.fecha}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">
+                  Periodo
+                </span>
+                <input
+                  name="periodo"
+                  value={form.periodo}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </label>
             </div>
 
             {[
-              ["direccionEscuela", "Direccion de la escuela"],
+              ["direccionEscuela", "Dirección de la escuela"],
               ["nombreAlumno", "Nombre del alumno"],
               ["licenciatura", "Licenciatura"],
               ["materia", "Materia"],
@@ -527,14 +622,14 @@ export default function ActaExamenTituloSuficiencia() {
                   name={name}
                   value={form[name]}
                   onChange={handleChange}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className={inputClass}
                 />
               </label>
             ))}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {[
-                ["matricula", "Matricula"],
+                ["matricula", "Matrícula"],
                 ["cuatrimestre", "Cuatrimestre"],
                 ["grupo", "Grupo"],
               ].map(([name, label]) => (
@@ -546,33 +641,59 @@ export default function ActaExamenTituloSuficiencia() {
                     name={name}
                     value={form[name]}
                     onChange={handleChange}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className={inputClass}
                   />
                 </label>
               ))}
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {[
-                ["calificacionLetra", "Calificacion letra"],
-                ["calificacionNumero", "Calificacion numero"],
-                ["sinodalUno", "Sinodal 1"],
-                ["sinodalDos", "Sinodal 2"],
-                ["sinodalTres", "Sinodal 3"],
-              ].map(([name, label]) => (
-                <label key={name} className="block">
-                  <span className="text-sm font-medium text-slate-700">
-                    {label}
-                  </span>
-                  <input
-                    name={name}
-                    value={form[name]}
-                    onChange={handleChange}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
-              ))}
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">
+                  Calificación con número
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  name="calificacionNumero"
+                  value={form.calificacionNumero}
+                  onChange={handleCalificacionNumeroChange}
+                  className={inputClass}
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">
+                  Calificación con letra
+                </span>
+                <input
+                  name="calificacionLetra"
+                  value={form.calificacionLetra}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </label>
             </div>
+
+            {[
+              ["sinodalUno", "Sinodal 1"],
+              ["sinodalDos", "Sinodal 2"],
+              ["sinodalTres", "Sinodal 3"],
+            ].map(([name, label]) => (
+              <label key={name} className="block">
+                <span className="text-sm font-medium text-slate-700">
+                  {label}
+                </span>
+                <input
+                  name={name}
+                  value={form[name]}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </label>
+            ))}
           </div>
         </section>
 
@@ -588,20 +709,20 @@ export default function ActaExamenTituloSuficiencia() {
                 alt="UNIFRONT"
               />
               <h2 className="acta-titulo-principal">
-                ACTA DE EXAMEN A TITULO DE SUFICIENCIA
+                ACTA DE EXAMEN A TÍTULO DE SUFICIENCIA
               </h2>
             </header>
 
             <section className="acta-titulo-meta">
               <div />
               <div className="acta-titulo-meta-derecha">
-                <div className="acta-titulo-row">
+                <div className="acta-titulo-row acta-titulo-row-tight">
                   <span className="acta-titulo-label">Fecha:</span>
                   <span className="acta-titulo-linea acta-titulo-linea-full">
                     {fechaLineValue(form.fecha)}
                   </span>
                 </div>
-                <div className="acta-titulo-row">
+                <div className="acta-titulo-row acta-titulo-row-tight">
                   <span className="acta-titulo-label">Periodo:</span>
                   <span className="acta-titulo-linea acta-titulo-linea-full">
                     {lineValue(form.periodo)}
@@ -624,17 +745,16 @@ export default function ActaExamenTituloSuficiencia() {
                 ATENCIÓN: DEPARTAMENTO DE CONTROL ESCOLAR
               </p>
 
-              <div className="acta-titulo-row">
+              <div className="acta-titulo-row acta-titulo-row-tight">
                 <span className="acta-titulo-label">
-                  Por medio de la presente, le informo que el alumno (a)
-                </span>
-                <span className="acta-titulo-linea acta-titulo-linea-nombre">
-                  {lineValue(form.nombreAlumno)}
+                  Por medio de la presente, le informo que el alumno (a):
                 </span>
               </div>
 
               <div className="acta-titulo-row">
-                <span className="acta-titulo-linea acta-titulo-linea-full" />
+                <span className="acta-titulo-linea acta-titulo-linea-full">
+                  {lineValue(form.nombreAlumno).toUpperCase()}
+                </span>
               </div>
 
               <div className="acta-titulo-row">
@@ -659,40 +779,44 @@ export default function ActaExamenTituloSuficiencia() {
                 </span>
               </div>
 
-              <div className="acta-titulo-row">
+              <div className="acta-titulo-row acta-titulo-row-tight">
                 <span className="acta-titulo-label">
                   Presentó Examen a título de suficiencia de la materia de:
-                </span>
-                <span className="acta-titulo-linea acta-titulo-linea-full">
-                  {lineValue(form.materia)}
                 </span>
               </div>
 
               <div className="acta-titulo-row">
-                <span className="acta-titulo-linea acta-titulo-linea-materia" />
+                <span className="acta-titulo-linea acta-titulo-linea-materia">
+                  {lineValue(form.materia)}
+                </span>
                 <span className="acta-titulo-label">Clave:</span>
                 <span className="acta-titulo-linea acta-titulo-linea-corta">
                   {lineValue(form.clave)}
                 </span>
               </div>
 
-              <div className="acta-titulo-row">
+              <div className="acta-titulo-row acta-titulo-row-leyenda">
                 <span className="acta-titulo-label">
                   Obteniendo la calificación
                 </span>
-                <span className="acta-titulo-linea acta-titulo-linea-full">
-                  {lineValue(form.calificacionLetra)}
-                </span>
-                <span className="acta-titulo-label">(</span>
-                <span className="acta-titulo-linea acta-titulo-linea-corta">
-                  {lineValue(form.calificacionNumero)}
-                </span>
-                <span className="acta-titulo-label">)</span>
-              </div>
 
-              <div className="acta-titulo-sublinea">
-                <span>LETRA</span>
-                <span>NÚMERO</span>
+                <span className="acta-titulo-campo acta-titulo-campo-full">
+                  <span className="acta-titulo-linea">
+                    {lineValue(form.calificacionLetra)}
+                  </span>
+                  <span className="acta-titulo-campo-leyenda">LETRA</span>
+                </span>
+
+                <span className="acta-titulo-label">(</span>
+
+                <span className="acta-titulo-campo">
+                  <span className="acta-titulo-linea acta-titulo-linea-corta">
+                    {lineValue(form.calificacionNumero)}
+                  </span>
+                  <span className="acta-titulo-campo-leyenda">NÚMERO</span>
+                </span>
+
+                <span className="acta-titulo-label">)</span>
               </div>
 
               <p className="acta-titulo-aviso">
@@ -727,8 +851,7 @@ export default function ActaExamenTituloSuficiencia() {
               <section className="acta-titulo-firmas-finales">
                 <div className="acta-titulo-firma">
                   <div className="acta-titulo-firma-linea" />
-                  <p>Nombre y Firma del alumno</p>
-                  <p className="acta-titulo-copias">c.c.p Archivo</p>
+                  <p>Nombre y firma del alumno</p>
                 </div>
 
                 <div className="acta-titulo-firma">
@@ -736,6 +859,14 @@ export default function ActaExamenTituloSuficiencia() {
                   <p>Nombre y firma del coordinador</p>
                 </div>
               </section>
+              <br />
+              <br />
+              <br />
+              <br />
+              <br />
+              <br />
+              <br />
+              <p className="acta-titulo-copias">c.c.p. Archivo</p>
             </main>
           </article>
         </section>
